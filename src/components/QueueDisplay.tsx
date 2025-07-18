@@ -12,9 +12,9 @@ interface QueueDisplayProps {
 
 export const QueueDisplay: FC<QueueDisplayProps> = ({ queue }) => {
   return (
-     <Card className="h-full bg-card/90">
+     <Card className="h-full bg-card/50">
         <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-headline"><Users /> Live Queue</CardTitle>
+            <CardTitle className="flex items-center gap-2 font-headline text-primary"><Users /> Live Queue</CardTitle>
             <CardDescription>Current waiting list and estimated service times.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -37,7 +37,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue }) => {
                                 <TableCell>
                                     <div className="flex items-center gap-2 font-medium">
                                         {member.name}
-                                        {index === 0 && <Bell className="w-4 h-4 text-accent animate-pulse" />}
+                                        {index === 0 && <Bell className="w-4 h-4 text-primary animate-pulse" />}
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right font-mono text-sm">

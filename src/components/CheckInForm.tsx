@@ -45,9 +45,9 @@ export function CheckInForm({ onJoinQueue, isQueueFull }: CheckInFormProps) {
   }
 
   return (
-    <Card className="bg-card/90 border-primary/10 shadow-lg backdrop-blur-sm">
+    <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
       <CardHeader>
-        <CardTitle className="font-headline">Join the Queue</CardTitle>
+        <CardTitle className="font-headline text-primary">Join the Queue</CardTitle>
         <CardDescription>Enter your details to get a spot in the line.</CardDescription>
       </CardHeader>
       <CardContent>

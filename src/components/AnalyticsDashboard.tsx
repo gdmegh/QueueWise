@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { BarChart, Clock, Maximize, Sigma } from 'lucide-react';
+import { BarChart, Clock, Maximize, Sigma, Users } from 'lucide-react';
 import type { AnalyticsData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -29,9 +29,9 @@ interface AnalyticsDashboardProps {
 
 export const AnalyticsDashboard: FC<AnalyticsDashboardProps> = ({ analytics }) => {
   return (
-    <Card className="h-full bg-card/90">
+    <Card className="h-full bg-card/50">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-headline"><BarChart /> Service Analytics</CardTitle>
+        <CardTitle className="flex items-center gap-2 font-headline text-primary"><BarChart /> Service Analytics</CardTitle>
         <CardDescription>Overview of today's queue performance.</CardDescription>
       </CardHeader>
       <CardContent>
