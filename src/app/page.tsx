@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -24,9 +25,29 @@ const formSchema = z.object({
 const MAX_QUEUE_SIZE = 20;
 const SIMULATION_INTERVAL_MS = 20000; // 20 seconds for simulation
 
+const createInitialQueue = (): QueueMember[] => {
+    const now = new Date();
+    return Array.from({ length: 10 }, (_, i) => {
+        const checkInTime = new Date(now.getTime() - (10 - i) * 5 * 60000); // Staggered check-in times
+        const service = services[i % services.length];
+        return {
+            id: Date.now() + i,
+            ticketNumber: `A-${String(101 + i).padStart(3, '0')}`,
+            name: `Customer ${i + 1}`,
+            phone: `012345678${String(10 + i).padStart(2, '0')}`,
+            checkInTime: checkInTime,
+            estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * service.avgTime * 60000),
+            status: 'waiting',
+            service: service.name,
+            assignedTo: i < 3 ? 2 : undefined, // Assign first 3 to mock staff
+        };
+    });
+};
+
+
 export default function QueuePage() {
   const router = useRouter();
-  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
+  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', createInitialQueue());
   const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalWaiting: 0,
@@ -35,7 +56,7 @@ export default function QueuePage() {
     servicedCount: 0,
     feedbackReceived: 0,
   });
-  const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 1);
+  const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 111);
   const { toast } = useToast();
 
   const updateAnalytics = useCallback(() => {
