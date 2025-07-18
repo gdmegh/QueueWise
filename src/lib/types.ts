@@ -7,6 +7,8 @@ export interface QueueMember {
   estimatedServiceTime: Date;
   status: 'waiting' | 'in-service' | 'serviced';
   service: string;
+  assignedTo?: number; // Staff user ID
+  serviceNotes?: string;
   feedback?: {
     rating: "excellent" | "good" | "fair" | "poor";
     comments?: string;

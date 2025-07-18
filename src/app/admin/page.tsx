@@ -37,10 +37,12 @@ export default function AdminPage() {
     MOCK_CURRENT_USER,
     { id: 2, name: 'John Staff', role: 'staff' },
     { id: 3, name: 'Jane Supervisor', role: 'supervisor' },
+    { id: 4, name: 'Emily Staff', role: 'staff' },
   ]);
   const [shifts, setShifts] = useLocalStorage<Shift[]>('shifts', [
     { id: 1, userId: 2, start: new Date('2024-08-01T09:00:00'), end: new Date('2024-08-01T17:00:00')},
     { id: 2, userId: 3, start: new Date('2024-08-01T10:00:00'), end: new Date('2024-08-01T18:00:00')},
+    { id: 3, userId: 4, start: new Date('2024-08-01T09:00:00'), end: new Date('2024-08-01T17:00:00')},
   ]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);

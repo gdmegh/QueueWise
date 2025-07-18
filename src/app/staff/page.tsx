@@ -1,0 +1,240 @@
+
+'use client';
+
+import { useState } from 'react';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { User, Shift, QueueMember } from '@/lib/types';
+import { services } from '@/lib/services';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { UserCog, Users, CalendarOff, Check, Send, ArrowRightLeft, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
+
+// Mock current staff user - in a real app, this would come from an auth context
+const MOCK_CURRENT_STAFF: User = { id: 2, name: 'John Staff', role: 'staff' };
+
+const resolveFormSchema = z.object({
+  notes: z.string().min(1, 'Service notes cannot be empty.'),
+});
+
+const transferFormSchema = z.object({
+  targetStaffId: z.string(),
+});
+
+const shiftRequestFormSchema = z.object({
+    reason: z.string().min(10, "Please provide a reason of at least 10 characters.")
+});
+
+export default function StaffPage() {
+  const [users, setUsers] = useLocalStorage<User[]>('users', []);
+  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
+  const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
+  const [activeToken, setActiveToken] = useState<QueueMember | null>(null);
+  const [isResolveModalOpen, setResolveModalOpen] = useState(false);
+  const [isTransferModalOpen, setTransferModalOpen] = useState(false);
+  const { toast } = useToast();
+
+  const myQueue = queue.filter(m => m.assignedTo === MOCK_CURRENT_STAFF.id || !m.assignedTo); // For demo, staff sees unassigned too
+  const otherStaff = users.filter(u => u.role !== 'admin' && u.id !== MOCK_CURRENT_STAFF.id);
+
+  const resolveForm = useForm<z.infer<typeof resolveFormSchema>>({ resolver: zodResolver(resolveFormSchema) });
+  const transferForm = useForm<z.infer<typeof transferFormSchema>>({ resolver: zodResolver(transferFormSchema) });
+  const shiftRequestForm = useForm<z.infer<typeof shiftRequestFormSchema>>({ resolver: zodResolver(shiftRequestFormSchema) });
+
+  const handleResolve = (token: QueueMember) => {
+    setActiveToken(token);
+    resolveForm.reset();
+    setResolveModalOpen(true);
+  };
+
+  const onResolveSubmit = (data: z.infer<typeof resolveFormSchema>) => {
+    if (!activeToken) return;
+    const resolvedMember: QueueMember = {
+      ...activeToken,
+      status: 'serviced',
+      serviceNotes: data.notes,
+    };
+    setServiced(prev => [...prev, resolvedMember]);
+    setQueue(prev => prev.filter(m => m.id !== activeToken.id));
+    setResolveModalOpen(false);
+    toast({ title: "Token Resolved", description: `Token ${activeToken.ticketNumber} marked as complete.` });
+  };
+
+  const handleTransfer = (token: QueueMember) => {
+    setActiveToken(token);
+    transferForm.reset();
+    setTransferModalOpen(true);
+  };
+
+  const onTransferSubmit = (data: z.infer<typeof transferFormSchema>) => {
+    if (!activeToken) return;
+    const targetStaffId = parseInt(data.targetStaffId, 10);
+    setQueue(prev => prev.map(m => m.id === activeToken.id ? { ...m, assignedTo: targetStaffId } : m));
+    setTransferModalOpen(false);
+    toast({ title: "Token Transferred", description: `Token ${activeToken.ticketNumber} transferred.` });
+  };
+
+  const onShiftRequestSubmit = (data: z.infer<typeof shiftRequestFormSchema>) => {
+    // In a real app, this would send a request to a backend.
+    console.log("Shift change request:", MOCK_CURRENT_STAFF.id, data.reason);
+    toast({ title: "Request Sent", description: "Your shift change request has been sent for approval." });
+    shiftRequestForm.reset();
+  };
+
+  return (
+    <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-2xl text-primary">
+            <UserCog /> Staff Panel
+          </CardTitle>
+          <CardDescription>Welcome, {MOCK_CURRENT_STAFF.name}. Manage your assigned queue and tasks.</CardDescription>
+        </CardHeader>
+        <CardContent className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-2">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><Users/> Customer Queue</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Ticket</TableHead>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Service</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {myQueue.length > 0 ? myQueue.map(member => (
+                                    <TableRow key={member.id}>
+                                        <TableCell><Badge variant="secondary">{member.ticketNumber}</Badge></TableCell>
+                                        <TableCell>{member.name}</TableCell>
+                                        <TableCell>{member.service}</TableCell>
+                                        <TableCell className="text-right space-x-1">
+                                            <Button size="sm" variant="outline" onClick={() => handleResolve(member)}><Check className="mr-1 h-4 w-4"/> Resolve</Button>
+                                            <Button size="sm" variant="ghost" onClick={() => handleTransfer(member)}><ArrowRightLeft className="mr-1 h-4 w-4"/> Transfer</Button>
+                                        </TableCell>
+                                    </TableRow>
+                                )) : (
+                                    <TableRow>
+                                        <TableCell colSpan={4} className="text-center h-24 text-muted-foreground">Your queue is empty.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="md:col-span-1">
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2"><CalendarOff/> Shift Management</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Form {...shiftRequestForm}>
+                            <form onSubmit={shiftRequestForm.handleSubmit(onShiftRequestSubmit)} className="space-y-4">
+                                <FormField
+                                    control={shiftRequestForm.control}
+                                    name="reason"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Shift Change Request</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Please state the reason for your shift change request..." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <Button type="submit" className="w-full"><Send className="mr-2"/> Send Request</Button>
+                            </form>
+                        </Form>
+                    </CardContent>
+                </Card>
+            </div>
+        </CardContent>
+      </Card>
+      
+      {/* Resolve Modal */}
+      <Dialog open={isResolveModalOpen} onOpenChange={setResolveModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Resolve Token: {activeToken?.ticketNumber}</DialogTitle>
+                <DialogDescription>Add service notes before marking this token as complete.</DialogDescription>
+            </DialogHeader>
+            <Form {...resolveForm}>
+                <form onSubmit={resolveForm.handleSubmit(onResolveSubmit)} className="space-y-4">
+                    <FormField
+                        control={resolveForm.control}
+                        name="notes"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Service Notes</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="e.g., Customer opened a new checking account. All documents signed." {...field} rows={4}/>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <Button type="submit" className="w-full">
+                        {resolveForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Confirm Resolution'}
+                    </Button>
+                </form>
+            </Form>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Transfer Modal */}
+      <Dialog open={isTransferModalOpen} onOpenChange={setTransferModalOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Transfer Token: {activeToken?.ticketNumber}</DialogTitle>
+                <DialogDescription>Select a staff member to transfer this token to.</DialogDescription>
+            </DialogHeader>
+            <Form {...transferForm}>
+                <form onSubmit={transferForm.handleSubmit(onTransferSubmit)} className="space-y-4">
+                    <FormField
+                        control={transferForm.control}
+                        name="targetStaffId"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Transfer To</FormLabel>
+                             <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a staff member" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {otherStaff.map(staff => (
+                                        <SelectItem key={staff.id} value={String(staff.id)}>{staff.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <Button type="submit" className="w-full">
+                        {transferForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Confirm Transfer'}
+                    </Button>
+                </form>
+            </Form>
+        </DialogContent>
+      </Dialog>
+    </main>
+  );
+}
