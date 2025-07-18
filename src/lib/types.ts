@@ -7,6 +7,10 @@ export interface QueueMember {
   estimatedServiceTime: Date;
   status: 'waiting' | 'in-service' | 'serviced';
   service: string;
+  feedback?: {
+    rating: "excellent" | "good" | "fair" | "poor";
+    comments?: string;
+  }
 }
 
 export interface AnalyticsData {
@@ -14,4 +18,5 @@ export interface AnalyticsData {
   maxWaitTime: number;
   averageServiceTime: number;
   servicedCount: number;
+  feedbackReceived: number;
 }

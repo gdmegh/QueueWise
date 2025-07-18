@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
-import { useForm, FormProvider, useFormContext } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { CheckInForm } from '@/components/CheckInForm';
@@ -14,8 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Ticket, List, Banknote, UserPlus, HandCoins } from 'lucide-react';
-import { services, type Service } from '@/lib/services';
+import { Ticket } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 
 const checkInFormSchema = z.object({
@@ -35,8 +34,8 @@ export default function TokenPage() {
   const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
   const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
   const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 1);
-  const [currentMember, setCurrentMember] = useState<QueueMember | null>(null);
-  const [step, setStep] = useState<'getToken' | 'setProfile' | 'selectService'>('getToken');
+  const [currentMember, setCurrentMember] = useState<Partial<QueueMember> | null>(null);
+  const [step, setStep] = useState<'getToken' | 'setProfile'>('getToken');
 
   const profileForm = useForm<z.infer<typeof profileFormSchema>>({
     resolver: zodResolver(profileFormSchema),
@@ -55,15 +54,12 @@ export default function TokenPage() {
       return;
     }
 
-    const newMember: QueueMember = {
+    const newMember: Partial<QueueMember> = {
       id: Date.now(),
       ticketNumber: `A-${String(ticketCounter).padStart(3, '0')}`,
-      name: '', // Will be set in the next step
       phone: data.phone,
       checkInTime: new Date(),
-      estimatedServiceTime: new Date(),
       status: 'waiting',
-      service: 'General Inquiry',
     };
 
     setTicketCounter(prev => prev + 1);
@@ -78,39 +74,20 @@ export default function TokenPage() {
 
   const handleSetProfile = (data: z.infer<typeof profileFormSchema>) => {
     if (!currentMember) return;
-    setCurrentMember(prev => prev ? { ...prev, name: data.name } : null);
-    setStep('selectService');
-  };
+    
+    const updatedMember: QueueMember = {
+        ...currentMember,
+        name: data.name,
+        service: 'Pending', // Default service, will be updated
+        estimatedServiceTime: new Date(), // Placeholder, will be updated
+    } as QueueMember;
 
-  const handleSelectService = (service: Service) => {
-    if (!currentMember) return;
+    // We don't add to the queue here yet.
+    // We pass the ticket number to the service selection page.
+    router.push(`/service?ticketNumber=${updatedMember.ticketNumber}`);
 
-    const updatedMember = { ...currentMember, service: service.name };
-
-    const lastPersonInQueue = queue[queue.length - 1];
-    const estimatedServiceTime = new Date(
-      (lastPersonInQueue ? new Date(lastPersonInQueue.estimatedServiceTime).getTime() : Date.now()) +
-      service.avgTime * 60000
-    );
-    updatedMember.estimatedServiceTime = estimatedServiceTime;
-
-    setQueue(prevQueue => [...prevQueue, updatedMember]);
-
-    toast({
-      title: "Service Selected!",
-      description: `You will be directed to the live queue. Go to ${service.counter}.`,
-    });
-
-    setTimeout(() => {
-      router.push('/queue');
-    }, 2000);
-  };
-
-  const serviceIcons: { [key: string]: React.ReactNode } = {
-    'General Inquiry': <List className="h-6 w-6" />,
-    'New Account': <UserPlus className="h-6 w-6" />,
-    'Deposit/Withdrawal': <Banknote className="h-6 w-6" />,
-    'Loan Application': <HandCoins className="h-6 w-6" />,
+    // A temporary member is stored to be picked up by the service page
+    setQueue(prev => [...prev, updatedMember]);
   };
   
   const renderStep = () => {
@@ -147,44 +124,15 @@ export default function TokenPage() {
                         <FormItem>
                           <FormLabel>Full Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g. John Doe" {...field} />
+                            <Input placeholder="e.g. Jane Doe" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <Button type="submit" className="w-full">Continue</Button>
+                    <Button type="submit" className="w-full">Select Service</Button>
                   </form>
                 </Form>
-              </CardContent>
-            </Card>
-          </div>
-        );
-      case 'selectService':
-        return (
-          <div className="max-w-md mx-auto space-y-6">
-            <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
-              <CardHeader>
-                <CardTitle className="text-2xl font-bold text-primary text-center">
-                  Hello, {currentMember?.name}!
-                </CardTitle>
-                <div className="text-center text-muted-foreground">Your Ticket: <span className="font-bold text-lg text-primary">{currentMember?.ticketNumber}</span></div>
-              </CardHeader>
-              <CardContent>
-                <h3 className="text-lg font-semibold text-center mb-4">Please select a service:</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {services.map((service) => (
-                    <Button
-                      key={service.name}
-                      variant="outline"
-                      className="h-24 flex flex-col items-center justify-center gap-2 text-base"
-                      onClick={() => handleSelectService(service)}
-                    >
-                      {serviceIcons[service.name]}
-                      <span>{service.name}</span>
-                    </Button>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           </div>

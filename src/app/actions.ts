@@ -1,6 +1,7 @@
 'use server';
 
 import { intelligentWaitTimePrediction, IntelligentWaitTimePredictionOutput } from '@/ai/flows/intelligent-wait-time-prediction';
+import { recommendService, ServiceRecommendationOutput } from '@/ai/flows/service-recommendation';
 
 export async function getPredictedWaitTime(
   currentQueueLength: number,
@@ -44,6 +45,20 @@ export async function getPredictedWaitTime(
     return {
       predictedWaitTime: Math.round(calculatedWait),
       reasoning: "Using fallback calculation. The estimated wait is based on the number of people in the queue and available staff."
+    };
+  }
+}
+
+export async function getServiceRecommendation(issueDescription: string): Promise<ServiceRecommendationOutput> {
+  try {
+    const result = await recommendService({ issueDescription });
+    return result;
+  } catch (error) {
+    console.error("AI service recommendation failed:", error);
+    // Fallback to general inquiry
+    return {
+      serviceName: 'General Inquiry',
+      reasoning: "Could not determine the specific service needed. Please clarify your request at the counter."
     };
   }
 }

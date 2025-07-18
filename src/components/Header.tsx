@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, LayoutDashboard, Ticket } from 'lucide-react';
+import { Users, LayoutDashboard, Info, Ticket } from 'lucide-react';
 import { Button } from './ui/button';
 
 export function Header() {
@@ -16,12 +16,21 @@ export function Header() {
         </Link>
         <nav className="flex items-center gap-2">
           <Link href="/" passHref>
-            <Button variant="ghost">Home</Button>
-          </Link>
-          <Link href="/queue" passHref>
             <Button variant="ghost">
               <LayoutDashboard className="mr-2 h-4 w-4" />
               Live Queue
+            </Button>
+          </Link>
+           <Link href="/about" passHref>
+            <Button variant="ghost">
+              <Info className="mr-2 h-4 w-4" />
+              About
+            </Button>
+          </Link>
+          <Link href="/token" passHref>
+            <Button variant="ghost">
+                <Ticket className="mr-2 h-4 w-4" />
+                Get Token
             </Button>
           </Link>
         </nav>

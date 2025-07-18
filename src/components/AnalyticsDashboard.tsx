@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import { BarChart, Clock, Maximize, Sigma, Users } from 'lucide-react';
+import { BarChart, Clock, Maximize, MessageSquareQuote, Sigma, Users } from 'lucide-react';
 import type { AnalyticsData } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -48,11 +48,11 @@ export const AnalyticsDashboard: FC<AnalyticsDashboardProps> = ({ analytics }) =
             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
             description="Average time spent per user."
           />
-          <AnalyticsCard
-            title="Max Wait Time"
-            value={`${analytics.maxWaitTime.toFixed(1)} min`}
-            icon={<Maximize className="h-4 w-4 text-muted-foreground" />}
-            description="Longest wait time recorded today."
+           <AnalyticsCard
+            title="Feedback Received"
+            value={analytics.feedbackReceived.toString()}
+            icon={<MessageSquareQuote className="h-4 w-4 text-muted-foreground" />}
+            description="Number of feedback submissions."
           />
            <AnalyticsCard
             title="Currently Waiting"
