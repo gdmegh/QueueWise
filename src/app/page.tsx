@@ -15,7 +15,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Bell } from 'lucide-react';
 
 const formSchema = z.object({
-  name: z.string().min(2),
   phone: z.string().regex(/^\d{10}$/),
 });
 
@@ -87,7 +86,7 @@ export default function Home() {
     const newMember: QueueMember = {
       id: Date.now(),
       ticketNumber: `A-${String(ticketCounter).padStart(3, '0')}`,
-      name: data.name,
+      name: `Guest (****${data.phone.slice(-4)})`,
       phone: data.phone,
       checkInTime: new Date(),
       estimatedServiceTime,

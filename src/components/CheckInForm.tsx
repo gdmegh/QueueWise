@@ -12,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
-  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   phone: z.string().regex(/^\d{10}$/, { message: 'Please enter a valid 10-digit phone number.' }),
 });
 
@@ -26,7 +25,6 @@ export function CheckInForm({ onJoinQueue, isQueueFull }: CheckInFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: '',
       phone: '',
     },
   });
@@ -48,24 +46,11 @@ export function CheckInForm({ onJoinQueue, isQueueFull }: CheckInFormProps) {
     <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
       <CardHeader>
         <CardTitle className="font-headline text-primary">Join the Queue</CardTitle>
-        <CardDescription>Enter your details to get a spot in the line.</CardDescription>
+        <CardDescription>Enter your phone number to get a spot in the line.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="phone"
