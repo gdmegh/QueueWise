@@ -20,3 +20,18 @@ export interface AnalyticsData {
   servicedCount: number;
   feedbackReceived: number;
 }
+
+export type UserRole = 'admin' | 'supervisor' | 'staff';
+
+export interface User {
+  id: number;
+  name: string;
+  role: UserRole;
+}
+
+export interface Shift {
+  id: number;
+  userId: number;
+  start: Date;
+  end: Date;
+}
