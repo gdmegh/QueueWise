@@ -32,6 +32,10 @@ const transferFormSchema = z.object({
 });
 
 const shiftRequestFormSchema = z.object({
+    fromDate: z.string().min(1, "Please select a start date."),
+    fromTime: z.string().min(1, "Please select a start time."),
+    toDate: z.string().min(1, "Please select an end date."),
+    toTime: z.string().min(1, "Please select an end time."),
     reason: z.string().min(10, "Please provide a reason of at least 10 characters.")
 });
 
@@ -42,6 +46,7 @@ export default function StaffPage() {
   const [activeToken, setActiveToken] = useState<QueueMember | null>(null);
   const [isResolveModalOpen, setResolveModalOpen] = useState(false);
   const [isTransferModalOpen, setTransferModalOpen] = useState(false);
+  const [isShiftRequestModalOpen, setShiftRequestModalOpen] = useState(false);
   const { toast } = useToast();
 
   const myQueue = queue.filter(m => m.assignedTo === MOCK_CURRENT_STAFF.id || !m.assignedTo); // For demo, staff sees unassigned too
@@ -86,10 +91,13 @@ export default function StaffPage() {
 
   const onShiftRequestSubmit = (data: z.infer<typeof shiftRequestFormSchema>) => {
     // In a real app, this would send a request to a backend.
-    console.log("Shift change request:", MOCK_CURRENT_STAFF.id, data.reason);
+    console.log("Shift change request:", MOCK_CURRENT_STAFF.id, data);
     toast({ title: "Request Sent", description: "Your shift change request has been sent for approval." });
     shiftRequestForm.reset();
+    setShiftRequestModalOpen(false);
   };
+
+  const staffLastName = MOCK_CURRENT_STAFF.name.split(' ').slice(1).join(' ');
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,7 +106,7 @@ export default function StaffPage() {
           <CardTitle className="flex items-center gap-2 text-2xl text-primary">
             <UserCog /> Staff Panel
           </CardTitle>
-          <CardDescription>Welcome, {MOCK_CURRENT_STAFF.name}. Manage your assigned queue and tasks.</CardDescription>
+          <CardDescription>Hi Mr. {staffLastName}, manage your assigned queue and tasks.</CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
@@ -143,24 +151,66 @@ export default function StaffPage() {
                         <CardTitle className="flex items-center gap-2"><CalendarOff/> Shift Management</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <Form {...shiftRequestForm}>
-                            <form onSubmit={shiftRequestForm.handleSubmit(onShiftRequestSubmit)} className="space-y-4">
-                                <FormField
-                                    control={shiftRequestForm.control}
-                                    name="reason"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Shift Change Request</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="Please state the reason for your shift change request..." {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <Button type="submit" className="w-full"><Send className="mr-2"/> Send Request</Button>
-                            </form>
-                        </Form>
+                        <p className="text-sm text-muted-foreground mb-4">Need to request a change to your work schedule? Submit a request here for supervisor approval.</p>
+                        <Dialog open={isShiftRequestModalOpen} onOpenChange={setShiftRequestModalOpen}>
+                            <DialogTrigger asChild>
+                                <Button className="w-full"><Send className="mr-2"/> Request Shift Change</Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Shift Change Request</DialogTitle>
+                                    <DialogDescription>
+                                        Fill out the details below to request a change to your shift. This will be sent to your supervisor for approval.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form {...shiftRequestForm}>
+                                    <form onSubmit={shiftRequestForm.handleSubmit(onShiftRequestSubmit)} className="space-y-4">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={shiftRequestForm.control} name="fromDate" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>From Date</FormLabel>
+                                                    <FormControl><Input type="date" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={shiftRequestForm.control} name="fromTime" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>From Time</FormLabel>
+                                                    <FormControl><Input type="time" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+                                         <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={shiftRequestForm.control} name="toDate" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>To Date</FormLabel>
+                                                    <FormControl><Input type="date" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={shiftRequestForm.control} name="toTime" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>To Time</FormLabel>
+                                                    <FormControl><Input type="time" {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
+                                        <FormField control={shiftRequestForm.control} name="reason" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Reason</FormLabel>
+                                                <FormControl><Textarea placeholder="Please state the reason for your shift change request..." {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <Button type="submit" className="w-full">
+                                            {shiftRequestForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Send Request'}
+                                        </Button>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
                     </CardContent>
                 </Card>
             </div>
