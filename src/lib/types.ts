@@ -6,6 +6,7 @@ export interface QueueMember {
   checkInTime: Date;
   estimatedServiceTime: Date;
   status: 'waiting' | 'in-service' | 'serviced';
+  service: string;
 }
 
 export interface AnalyticsData {

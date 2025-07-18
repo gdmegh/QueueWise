@@ -12,25 +12,26 @@ import { WaitTimeCard } from '@/components/WaitTimeCard';
 import type { AnalyticsData, QueueMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Bell } from 'lucide-react';
+import { services } from '@/lib/services';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
 const formSchema = z.object({
   phone: z.string().regex(/^\d{10}$/),
 });
 
 const MAX_QUEUE_SIZE = 20;
-const AVG_SERVICE_TIME_MINS = 5; // Average service time in minutes
 const SIMULATION_INTERVAL_MS = 20000; // 20 seconds for simulation
 
 export default function QueuePage() {
-  const [queue, setQueue] = useState<QueueMember[]>([]);
-  const [serviced, setServiced] = useState<QueueMember[]>([]);
+  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
+  const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalWaiting: 0,
     maxWaitTime: 0,
     averageServiceTime: 0,
     servicedCount: 0,
   });
-  const [ticketCounter, setTicketCounter] = useState(1);
+  const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 1);
   const { toast } = useToast();
 
   const updateAnalytics = useCallback(() => {
@@ -48,11 +49,11 @@ export default function QueuePage() {
     }
 
     const waitTimes = serviced.map(m =>
-      Math.max(0, differenceInMinutes(m.estimatedServiceTime, m.checkInTime))
+      Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime)))
     );
     const maxWaitTime = Math.max(...waitTimes);
     const totalServiceTime = serviced.reduce(
-      (acc, m) => acc + Math.max(0, differenceInMinutes(m.estimatedServiceTime, m.checkInTime)),
+      (acc, m) => acc + Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime))),
       0
     );
     const averageServiceTime = totalServiceTime / servicedCount;
@@ -75,11 +76,14 @@ export default function QueuePage() {
         });
         return;
     }
+    
+    // For direct check-in on this page, default to general inquiry
+    const service = services[0]; 
 
     const lastPerson = queue[queue.length - 1];
     const estimatedServiceTime = new Date(
-      (lastPerson ? lastPerson.estimatedServiceTime.getTime() : Date.now()) +
-        AVG_SERVICE_TIME_MINS * 60000
+      (lastPerson ? new Date(lastPerson.estimatedServiceTime).getTime() : Date.now()) +
+        service.avgTime * 60000
     );
 
     const newMember: QueueMember = {
@@ -90,6 +94,7 @@ export default function QueuePage() {
       checkInTime: new Date(),
       estimatedServiceTime,
       status: 'waiting',
+      service: service.name,
     };
 
     setQueue(prevQueue => [...prevQueue, newMember]);
@@ -107,8 +112,8 @@ export default function QueuePage() {
 
   useEffect(() => {
     const simulation = setInterval(() => {
-      if (queue.length > 0) {
-        setQueue(prevQueue => {
+      setQueue(prevQueue => {
+        if (prevQueue.length > 0) {
           const nextInLine = prevQueue[0];
           
           if(prevQueue.length > 1) {
@@ -126,12 +131,13 @@ export default function QueuePage() {
 
           setServiced(prevServiced => [...prevServiced, { ...nextInLine, status: 'serviced' }]);
           return prevQueue.slice(1);
-        });
-      }
+        }
+        return prevQueue;
+      });
     }, SIMULATION_INTERVAL_MS);
 
     return () => clearInterval(simulation);
-  }, [queue, toast]);
+  }, [toast, setQueue, setServiced]);
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
