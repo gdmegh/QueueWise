@@ -27,9 +27,9 @@ export default function LandingPage() {
                 QueueWise offers an intelligent, AI-powered solution to manage queues efficiently, reduce wait times, and enhance customer satisfaction.
               </p>
               <div>
-                <Link href="/queue">
+                <Link href="/token">
                   <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-                    See Live Demo
+                    Get Your Token Now
                   </Button>
                 </Link>
               </div>
@@ -73,13 +73,13 @@ export default function LandingPage() {
                 Ready to Eliminate Waiting Lines?
               </h2>
               <p className="mx-auto max-w-[600px] text-foreground/70 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-                Explore our live demo to see how QueueWise can transform your customer service.
+                Get your token and experience a smarter way to wait.
               </p>
             </div>
             <div className="mx-auto w-full max-w-sm space-y-2">
-               <Link href="/queue">
+               <Link href="/token">
                   <Button size="lg" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold">
-                    Experience the Future of Queues
+                    Get Token
                   </Button>
                 </Link>
             </div>

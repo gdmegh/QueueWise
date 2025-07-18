@@ -18,16 +18,10 @@ export function Header() {
           <Link href="/" passHref>
             <Button variant="ghost">Home</Button>
           </Link>
-          <Link href="/token" passHref>
-            <Button variant="ghost">
-              <Ticket className="mr-2 h-4 w-4" />
-              Get Token
-            </Button>
-          </Link>
           <Link href="/queue" passHref>
             <Button variant="ghost">
               <LayoutDashboard className="mr-2 h-4 w-4" />
-              Live Demo
+              Live Queue
             </Button>
           </Link>
         </nav>
