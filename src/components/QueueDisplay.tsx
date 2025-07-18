@@ -15,17 +15,18 @@ interface QueueDisplayProps {
   onEditService: (memberId: number) => void;
 }
 
-const serviceDetails: { [key: string]: { icon: React.ReactNode, counter: string } } = services.reduce((acc, service) => {
+const serviceDetails: { [key: string]: { icon: React.ReactNode; counter: string } } = services.reduce((acc, service) => {
   const icons: { [key: string]: React.ReactNode } = {
-    'General Inquiry': <List className="h-4 w-4" />,
-    'New Account': <UserPlus className="h-4 w-4" />,
-    'Deposit/Withdrawal': <Banknote className="h-4 w-4" />,
-    'Loan Application': <HandCoins className="h-4 w-4" />,
-    'Pending': <List className="h-4 w-4" />
+      'General Inquiry': <List className="h-4 w-4" />,
+      'New Account': <UserPlus className="h-4 w-4" />,
+      'Deposit/Withdrawal': <Banknote className="h-4 w-4" />,
+      'Loan Application': <HandCoins className="h-4 w-4" />,
+      'Pending': <List className="h-4 w-4" />,
   };
   acc[service.name] = { icon: icons[service.name] || <List className="h-4 w-4" />, counter: service.counter };
   return acc;
-}, {} as { [key: string]: { icon: React.ReactNode, counter: string } });
+}, {} as { [key: string]: { icon: React.ReactNode; counter: string } });
+
 
 const NowServing: FC<{ member: QueueMember }> = ({ member }) => (
     <Card className="mb-6 bg-gradient-to-r from-accent/20 to-primary/20 border-primary/50">
