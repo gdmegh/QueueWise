@@ -3,22 +3,26 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { z } from 'zod';
-import { useForm, FormProvider } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import type { QueueMember } from '@/lib/types';
-import { services, Service } from '@/lib/services';
+import { services as serviceCategories, SubService } from '@/lib/services';
 import { getServiceRecommendation } from '@/app/actions';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Wand2 } from 'lucide-react';
+import { Loader2, ArrowRight } from 'lucide-react';
 
 const serviceFormSchema = z.object({
-  issueDescription: z.string().min(10, { message: 'Please describe your issue in at least 10 characters.' }),
+  category: z.string().min(1, 'Please select a category.'),
+  service: z.string().min(1, 'Please select a service.'),
+  subService: z.string().optional(),
+  description: z.string().optional(),
 });
 
 export default function ServicePage() {
@@ -28,16 +32,34 @@ export default function ServicePage() {
   
   const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
   const [currentMember, setCurrentMember] = useState<QueueMember | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [recommendation, setRecommendation] = useState<{ serviceName: string; reasoning: string } | null>(null);
   const ticketNumber = searchParams.get('ticketNumber');
 
   const form = useForm<z.infer<typeof serviceFormSchema>>({
     resolver: zodResolver(serviceFormSchema),
     defaultValues: {
-      issueDescription: '',
+      category: '',
+      service: '',
+      subService: '',
+      description: '',
     },
   });
+
+  const category = form.watch('category');
+  const serviceName = form.watch('service');
+
+  const selectedCategory = serviceCategories.find(c => c.name === category);
+  const selectedService = selectedCategory?.subServices.find(s => s.name === serviceName);
+  const subServices = selectedService?.subServices;
+  const needsDescription = selectedService?.needsDescription;
+
+  useEffect(() => {
+    form.setValue('service', '');
+    form.setValue('subService', '');
+  }, [category, form]);
+
+  useEffect(() => {
+    form.setValue('subService', '');
+  }, [serviceName, form]);
 
   useEffect(() => {
     if (ticketNumber) {
@@ -54,48 +76,51 @@ export default function ServicePage() {
     }
   }, [ticketNumber, queue, router, toast]);
 
-  const handleGetServiceRecommendation = async (data: z.infer<typeof serviceFormSchema>) => {
-    setIsLoading(true);
-    const result = await getServiceRecommendation(data.issueDescription);
-    setRecommendation(result);
-    setIsLoading(false);
-  };
-  
-  const confirmService = () => {
-    if (!currentMember || !recommendation) return;
+  const onSubmit = (data: z.infer<typeof serviceFormSchema>) => {
+    if (!currentMember) return;
+    
+    let finalService: SubService | undefined;
+    if (data.subService) {
+        finalService = selectedService?.subServices?.find(ss => ss.name === data.subService);
+    } else {
+        finalService = selectedService;
+    }
 
-    const service = services.find(s => s.name === recommendation.serviceName) || services[0];
+    if (!finalService) {
+        toast({ title: "Invalid Service", description: "Please complete your service selection.", variant: "destructive" });
+        return;
+    }
+
+    const { name, avgTime, counter } = finalService;
     
     setQueue(prevQueue => {
-      // Find if user is already in queue (editing service) or new
       const userIndex = prevQueue.findIndex(m => m.id === currentMember.id);
       
       const lastPersonInQueue = prevQueue[prevQueue.length - 1];
       const estimatedServiceTime = new Date(
         (lastPersonInQueue ? new Date(lastPersonInQueue.estimatedServiceTime).getTime() : Date.now()) +
-        service.avgTime * 60000
+        avgTime * 60000
       );
         
       const updatedMember = {
         ...currentMember,
-        service: service.name,
+        service: name,
+        serviceNotes: data.description,
         estimatedServiceTime,
       };
 
       if(userIndex > -1) {
-        // User is editing, update their details
         const newQueue = [...prevQueue];
         newQueue[userIndex] = updatedMember;
         return newQueue;
       } else {
-        // New user, add to queue
         return [...prevQueue, updatedMember];
       }
     });
 
     toast({
       title: "Service Confirmed!",
-      description: `You are now in the queue for ${service.name}. Go to ${service.counter}.`,
+      description: `You are now in the queue for ${name}. Please go to ${counter}.`,
     });
 
     router.push('/');
@@ -119,46 +144,100 @@ export default function ServicePage() {
             </CardTitle>
             <div className="text-center text-muted-foreground">Your Ticket: <span className="font-bold text-lg text-primary">{currentMember.ticketNumber}</span></div>
             <CardDescription className="text-center pt-2">
-              To help us direct you to the right person, please describe what you need assistance with today.
+              Please select the service you need today. This will help us direct you to the right person.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!recommendation ? (
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleGetServiceRecommendation)} className="space-y-4">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Service Category</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a category..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {serviceCategories.map(cat => <SelectItem key={cat.name} value={cat.name}>{cat.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {selectedCategory && (
                   <FormField
                     control={form.control}
-                    name="issueDescription"
+                    name="service"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>How can we help you?</FormLabel>
+                        <FormLabel>Service</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a service..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {selectedCategory.subServices.map(s => <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+
+                {subServices && (
+                  <FormField
+                    control={form.control}
+                    name="subService"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Specific Request</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a specific request..." />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {subServices.map(ss => <SelectItem key={ss.name} value={ss.name}>{ss.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                
+                {needsDescription && !subServices && (
+                   <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Additional Details</FormLabel>
                         <FormControl>
-                          <Textarea placeholder="e.g., 'I would like to open a savings account' or 'I lost my debit card and need a new one.'" {...field} rows={4} />
+                          <Textarea placeholder="Please provide more details about your inquiry..." {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? <Loader2 className="animate-spin" /> : <Wand2 />}
-                    Get Service Recommendation
-                  </Button>
-                </form>
-              </Form>
-            ) : (
-              <div className="text-center space-y-4">
-                <h3 className="text-lg font-semibold">Our AI Recommends:</h3>
-                <div className="p-4 bg-accent/10 border border-accent/30 rounded-lg">
-                    <p className="text-2xl font-bold text-primary">{recommendation.serviceName}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{recommendation.reasoning}</p>
-                </div>
-                <p className="text-sm text-muted-foreground">Does this look correct?</p>
-                <div className="flex gap-4 justify-center">
-                    <Button onClick={confirmService} className="w-full">Confirm and Join Queue</Button>
-                    <Button variant="outline" onClick={() => setRecommendation(null)} className="w-full">Try Again</Button>
-                </div>
-              </div>
-            )}
+                )}
+
+                <Button type="submit" className="w-full">
+                  Confirm Service & Join Queue <ArrowRight className="ml-2"/>
+                </Button>
+              </form>
+            </Form>
           </CardContent>
         </Card>
       </div>
