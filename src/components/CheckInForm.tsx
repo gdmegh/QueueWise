@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
-  phone: z.string().regex(/^\d{10}$/, { message: 'Please enter a valid 10-digit phone number.' }),
+  phone: z.string().regex(/^\d{11}$/, { message: 'Please enter a valid 11-digit phone number.' }),
 });
 
 interface CheckInFormProps {
@@ -58,7 +58,7 @@ export function CheckInForm({ onJoinQueue, isQueueFull }: CheckInFormProps) {
                 <FormItem>
                   <FormLabel>Phone Number (for SMS alerts)</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="1234567890" {...field} />
+                    <Input type="tel" placeholder="01234567890" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

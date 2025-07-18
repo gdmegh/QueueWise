@@ -16,7 +16,7 @@ import { services } from '@/lib/services';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 
 const formSchema = z.object({
-  phone: z.string().regex(/^\d{10}$/),
+  phone: z.string().regex(/^\d{11}$/, { message: 'Please enter a valid 11-digit phone number.' }),
 });
 
 const MAX_QUEUE_SIZE = 20;
