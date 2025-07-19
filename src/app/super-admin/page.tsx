@@ -169,7 +169,7 @@ export default function SuperAdminPage() {
                              <CardHeader>
                                 <CardTitle>Subscription Plan Distribution</CardTitle>
                                 <CardDescription>Distribution of active subscription plans.</CardDescription>
-                            </Header>
+                            </CardHeader>
                             <CardContent className="flex items-center justify-center">
                                <ChartContainer config={plansChartConfig} className="h-[250px] w-full aspect-square">
                                     <PieChart>
