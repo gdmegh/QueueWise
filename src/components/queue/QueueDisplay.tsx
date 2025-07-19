@@ -14,6 +14,7 @@ interface QueueDisplayProps {
   queue: QueueMember[];
   onEditService: (memberId: number) => void;
   onSetFeedback: (memberId: number, feedback: any) => void;
+  isPublicView?: boolean;
 }
 
 const serviceDetails: { [key: string]: { icon: React.ReactNode; counter: string } } = services.flatMap(cat => cat.subServices).reduce((acc, service) => {
@@ -41,7 +42,7 @@ const serviceDetails: { [key: string]: { icon: React.ReactNode; counter: string 
 }, {} as { [key: string]: { icon: React.ReactNode; counter: string } });
 
 
-const NowServing: FC<{ members: QueueMember[], onSetFeedback: (memberId: number, feedback: any) => void }> = ({ members, onSetFeedback }) => (
+const NowServing: FC<{ members: QueueMember[], onSetFeedback: (memberId: number, feedback: any) => void, isPublicView?: boolean }> = ({ members, onSetFeedback, isPublicView }) => (
     <Card className="mb-6 bg-gradient-to-r from-accent/20 to-primary/20 border-primary/50">
         <CardHeader>
             <CardTitle className="text-3xl text-primary flex items-center justify-center gap-4">
@@ -58,7 +59,7 @@ const NowServing: FC<{ members: QueueMember[], onSetFeedback: (memberId: number,
                         <p key={index}>Please proceed to {service.counter} for {service.name}</p>
                       ))}
                     </div>
-                    {member.status === 'serviced' && !member.feedback && <FeedbackForm member={member} onSubmitFeedback={onSetFeedback} />}
+                    {!isPublicView && member.status === 'serviced' && !member.feedback && <FeedbackForm member={member} onSubmitFeedback={onSetFeedback} />}
                     {member.status === 'serviced' && member.feedback && (
                          <div className="mt-4 flex items-center justify-center gap-2 text-green-500">
                             <CheckCircle className="h-5 w-5"/>
@@ -71,7 +72,7 @@ const NowServing: FC<{ members: QueueMember[], onSetFeedback: (memberId: number,
     </Card>
 );
 
-export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSetFeedback }) => {
+export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSetFeedback, isPublicView = false }) => {
   const nowServing = queue.filter(m => m.status === 'in-service' || m.status === 'serviced');
   const upNext = queue.filter(m => m.status === 'waiting');
 
@@ -82,7 +83,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
             <CardDescription>Current waiting list and estimated service times.</CardDescription>
         </CardHeader>
         <CardContent>
-            {nowServing.length > 0 && <NowServing members={nowServing} onSetFeedback={onSetFeedback} />}
+            {nowServing.length > 0 && <NowServing members={nowServing} onSetFeedback={onSetFeedback} isPublicView={isPublicView} />}
             {upNext.length > 0 ? (
                 <div className="border rounded-lg overflow-hidden">
                     <Table>
@@ -91,7 +92,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
                                 <TableHead className="w-[100px]">Ticket</TableHead>
                                 <TableHead>Name</TableHead>
                                 <TableHead>Services</TableHead>
-                                <TableHead className="text-right">Action</TableHead>
+                                {!isPublicView && <TableHead className="text-right">Action</TableHead>}
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -121,11 +122,13 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
                                       )}
                                     </div>
                                 </TableCell>
-                                <TableCell className="text-right">
-                                  <Button variant="ghost" size="icon" onClick={() => onEditService(member.id)}>
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                </TableCell>
+                                {!isPublicView && 
+                                  <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => onEditService(member.id)}>
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
+                                }
                                 </TableRow>
                             ))}
                         </TableBody>

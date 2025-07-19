@@ -1,23 +1,26 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { differenceInMinutes } from 'date-fns';
 
 import { CheckInForm } from '@/components/forms/CheckInForm';
 import { WaitTimeCard } from '@/components/queue/WaitTimeCard';
+import { QueueDisplay } from '@/components/queue/QueueDisplay';
 import type { QueueMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Ticket, LogIn } from 'lucide-react';
+import { Ticket, LogIn, Bell } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import * as QueueService from '@/lib/queue-service';
 
 const checkInFormSchema = z.object({
   phone: z.string().regex(/^\d{10,15}$/, { message: 'Please enter a valid phone number.' }),
@@ -29,15 +32,16 @@ const loginFormSchema = z.object({
 });
 
 const MAX_QUEUE_SIZE = 50;
+const REFRESH_INTERVAL_MS = 5000;
 
 export default function HomePageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
-  const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
   const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 111);
-  
+  const [queue, setQueue] = useState<QueueMember[]>([]);
+  const [serviced, setServiced] = useState<QueueMember[]>([]);
+
   const checkInForm = useForm<z.infer<typeof checkInFormSchema>>({
     resolver: zodResolver(checkInFormSchema),
     defaultValues: { phone: '' },
@@ -48,9 +52,31 @@ export default function HomePageContent() {
     defaultValues: { email: '', password: '' },
   });
 
+  const refreshData = useCallback(() => {
+    const currentQueue = QueueService.getQueue();
+    const currentServiced = QueueService.getServiced();
+    setQueue(currentQueue);
+    setServiced(currentServiced);
+  }, []);
+
+  useEffect(() => {
+    refreshData();
+    const intervalId = setInterval(refreshData, REFRESH_INTERVAL_MS);
+    return () => clearInterval(intervalId);
+  }, [refreshData]);
+  
+  useEffect(() => {
+    const simulationId = setInterval(() => {
+        QueueService.runQueueSimulation();
+        refreshData();
+    }, REFRESH_INTERVAL_MS);
+    return () => clearInterval(simulationId);
+  }, [refreshData]);
+
 
   const handleJoinQueueAsGuest = (data: z.infer<typeof checkInFormSchema>) => {
-    if (queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE) {
+    const currentQueue = QueueService.getQueue();
+    if (currentQueue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE) {
       toast({
         title: "Queue is full",
         description: "We're sorry, the queue is currently full. Please try again later.",
@@ -71,7 +97,10 @@ export default function HomePageContent() {
     };
 
     setTicketCounter(prev => prev + 1);
-    setQueue(prev => [...prev, newMember]);
+    
+    const updatedQueue = [...currentQueue, newMember];
+    QueueService.updateQueue(updatedQueue);
+    refreshData();
     
     router.push(`/check-in?ticketNumber=${newMember.ticketNumber}`);
   };
@@ -84,64 +113,111 @@ export default function HomePageContent() {
     });
     router.push('/account');
   };
+  
+  const handleEditService = (memberId: number) => {
+    const member = queue.find(m => m.id === memberId);
+    if (member) {
+      router.push(`/service?ticketNumber=${member.ticketNumber}`);
+    }
+  };
+
+  const handleSetFeedback = (memberId: number, feedback: any) => {
+    const allMembers = [...QueueService.getQueue(), ...QueueService.getServiced()];
+    const member = allMembers.find(m => m.id === memberId);
+    
+    if (member) {
+        member.feedback = feedback;
+        
+        let queueList = QueueService.getQueue();
+        const queueIndex = queueList.findIndex(q => q.id === memberId);
+        if (queueIndex > -1) {
+            queueList[queueIndex] = member;
+            QueueService.updateQueue(queueList);
+        }
+
+        let servicedList = QueueService.getServiced();
+        const servicedIndex = servicedList.findIndex(s => s.id === memberId);
+        if (servicedIndex > -1) {
+            const newServicedList = servicedList.map(s => s.id === memberId ? member : s);
+            localStorage.setItem('serviced', JSON.stringify(newServicedList));
+        }
+    }
+    refreshData();
+  };
+
+  const waitingQueue = queue.filter(q => q.status === 'waiting');
+  const servicedToday = serviced.length + queue.filter(q => q.status === 'serviced').length;
 
   return (
-    <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex justify-center items-center">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-            <Ticket className="mx-auto h-12 w-12 text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight text-primary mt-4">Welcome to GD Clinic</h1>
-            <p className="text-muted-foreground mt-2">Your health is our priority. Please check in to begin.</p>
-        </div>
+    <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+        {/* Left column for Check-in and Wait Time */}
+        <div className="lg:col-span-1 space-y-8 sticky top-24">
+            <div className="text-center">
+                <Ticket className="mx-auto h-12 w-12 text-primary" />
+                <h1 className="text-3xl font-bold tracking-tight text-primary mt-4">Welcome to GD Clinic</h1>
+                <p className="text-muted-foreground mt-2">Your health is our priority. Please check in to begin.</p>
+            </div>
 
-        <Tabs defaultValue="guest" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="guest">New Patient Check-in</TabsTrigger>
-                <TabsTrigger value="login">Registered Patient</TabsTrigger>
-            </TabsList>
-            <TabsContent value="guest" className="mt-4">
-                 <CheckInForm onJoinQueue={handleJoinQueueAsGuest} isQueueFull={queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE}/>
-            </TabsContent>
-            <TabsContent value="login" className="mt-4">
-                <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
-                    <CardHeader>
-                        <CardTitle className="font-headline text-primary">Patient Login</CardTitle>
-                        <CardDescription>Access your account to see your history and get faster service.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Form {...loginForm}>
-                            <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-                                <FormField
-                                    control={loginForm.control}
-                                    name="email"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Email</FormLabel>
-                                            <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={loginForm.control}
-                                    name="password"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Password</FormLabel>
-                                            <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <Button type="submit" className="w-full"><LogIn className="mr-2"/> Login</Button>
-                                <Button variant="link" className="w-full text-xs">Don't have an account? Sign up</Button>
-                            </form>
-                        </Form>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
-        <WaitTimeCard queueLength={queue.filter(q => q.status === 'waiting').length} servicedCount={serviced.length + queue.filter(q => q.status === 'serviced').length} />
+            <Tabs defaultValue="guest" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="guest">New Patient Check-in</TabsTrigger>
+                    <TabsTrigger value="login">Registered Patient</TabsTrigger>
+                </TabsList>
+                <TabsContent value="guest" className="mt-4">
+                    <CheckInForm onJoinQueue={handleJoinQueueAsGuest} isQueueFull={waitingQueue.length >= MAX_QUEUE_SIZE}/>
+                </TabsContent>
+                <TabsContent value="login" className="mt-4">
+                    <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
+                        <CardHeader>
+                            <CardTitle className="font-headline text-primary">Patient Login</CardTitle>
+                            <CardDescription>Access your account to see your history and get faster service.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <Form {...loginForm}>
+                                <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
+                                    <FormField
+                                        control={loginForm.control}
+                                        name="email"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Email</FormLabel>
+                                                <FormControl><Input type="email" placeholder="you@example.com" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={loginForm.control}
+                                        name="password"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Password</FormLabel>
+                                                <FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Button type="submit" className="w-full"><LogIn className="mr-2"/> Login</Button>
+                                    <Button variant="link" className="w-full text-xs">Don't have an account? Sign up</Button>
+                                </form>
+                            </Form>
+                        </CardContent>
+                    </Card>
+                </TabsContent>
+            </Tabs>
+            <WaitTimeCard queueLength={waitingQueue.length} servicedCount={servicedToday} />
+        </div>
+        
+        {/* Right column for Queue Display */}
+        <div className="lg:col-span-2">
+             <QueueDisplay 
+                queue={queue} 
+                onEditService={handleEditService} 
+                onSetFeedback={handleSetFeedback} 
+                isPublicView={true}
+              />
+        </div>
       </div>
     </main>
   );

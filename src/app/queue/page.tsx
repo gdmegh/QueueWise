@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WaitTimeCard } from '@/components/queue/WaitTimeCard';
 import type { QueueMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Edit } from 'lucide-react';
+import { Bell } from 'lucide-react';
 import * as QueueService from '@/lib/queue-service';
 import { useRouter } from 'next/navigation';
 
@@ -42,7 +42,6 @@ export default function QueuePage() {
     const waitingQueue = currentQueue.filter(m => m.status === 'waiting');
     const totalWaiting = waitingQueue.length;
     
-    // Combine already serviced from the dedicated list and any in the queue marked as serviced
     const allServiced = [...currentServiced, ...currentQueue.filter(m => m.status === 'serviced')];
     const servicedCount = allServiced.length;
     const feedbackReceived = allServiced.filter(m => m.feedback).length;
@@ -91,7 +90,6 @@ export default function QueuePage() {
     if (member) {
         member.feedback = feedback;
         
-        // Update in queue if it exists there
         let queueList = QueueService.getQueue();
         const queueIndex = queueList.findIndex(q => q.id === memberId);
         if (queueIndex > -1) {
@@ -99,12 +97,11 @@ export default function QueuePage() {
             QueueService.updateQueue(queueList);
         }
 
-        // Update in serviced list if it exists there
         let servicedList = QueueService.getServiced();
         const servicedIndex = servicedList.findIndex(s => s.id === memberId);
         if (servicedIndex > -1) {
-            servicedList[servicedIndex] = member;
-            QueueService.addAllToServiced(servicedList.filter((_,i) => i !== servicedIndex)); // Bit of a hack to replace
+            const newServicedList = servicedList.map(s => s.id === memberId ? member : s);
+            localStorage.setItem('serviced', JSON.stringify(newServicedList));
         }
     }
     refreshData();
@@ -117,11 +114,9 @@ export default function QueuePage() {
   }, [refreshData]);
   
   useEffect(() => {
-     // The simulation is now external in queue-service, so we just need to refresh
     const simulationId = setInterval(() => {
         const { newlyServiced } = QueueService.runQueueSimulation();
         if (newlyServiced.length > 0) {
-            // Check for who is next after the newly serviced person
             const waiting = QueueService.getQueue().filter(q => q.status === 'waiting');
             if (waiting.length > 0) {
                  const nextInLine = waiting.sort((a,b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime())[0];
@@ -145,28 +140,26 @@ export default function QueuePage() {
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-1 space-y-8">
-          <WaitTimeCard queueLength={analytics.totalWaiting} servicedCount={analytics.servicedCount} />
-        </div>
-        <div className="lg:col-span-2">
-          <Tabs defaultValue="queue" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="queue">Live Queue</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            </TabsList>
-            <TabsContent value="queue" className="mt-4">
-              <QueueDisplay 
-                queue={queue} 
-                onEditService={handleEditService} 
-                onSetFeedback={handleSetFeedback} 
-              />
-            </TabsContent>
-            <TabsContent value="analytics" className="mt-4">
-              <AnalyticsDashboard analytics={analytics} allServiced={[...serviced, ...queue.filter(q=> q.status === 'serviced')]} />
-            </TabsContent>
-          </Tabs>
-        </div>
+      <div className="space-y-8">
+        <WaitTimeCard queueLength={analytics.totalWaiting} servicedCount={analytics.servicedCount} />
+        
+        <Tabs defaultValue="queue" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="queue">Live Queue</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          </TabsList>
+          <TabsContent value="queue" className="mt-4">
+            <QueueDisplay 
+              queue={queue} 
+              onEditService={handleEditService} 
+              onSetFeedback={handleSetFeedback} 
+              isPublicView={false}
+            />
+          </TabsContent>
+          <TabsContent value="analytics" className="mt-4">
+            <AnalyticsDashboard analytics={analytics} allServiced={[...serviced, ...queue.filter(q=> q.status === 'serviced')]} />
+          </TabsContent>
+        </Tabs>
       </div>
     </main>
   );
