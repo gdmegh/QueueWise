@@ -1,4 +1,6 @@
-import { SubService } from "./services";
+import { SubService as ImportedSubService } from "./services";
+
+export type SubService = ImportedSubService;
 
 export interface QueueMember {
   id: number;

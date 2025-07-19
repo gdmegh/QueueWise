@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { QueueMember } from '@/lib/types';
+import { QueueMember, SubService } from '@/lib/types';
 import { WaitTimeCard } from '@/components/WaitTimeCard';
 import { Badge } from '@/components/ui/badge';
 import { Users, Clock, UserCheck } from 'lucide-react';
@@ -15,29 +15,51 @@ const REFRESH_INTERVAL_MS = 15000; // 15 seconds
 
 const createInitialQueue = (): QueueMember[] => {
     const now = new Date();
-    return Array.from({ length: 50 }, (_, i) => {
-        const checkInTime = new Date(now.getTime() - (50 - i) * 2 * 60000); // Staggered check-in times
-        const service = services[i % services.length].subServices[0];
+    const queue: QueueMember[] = [];
+    
+    // Distribute services to create a predictable queue for each counter
+    const counterServices: { [key: string]: SubService[] } = {
+        'Counter 1': services[0].subServices.filter(s => s.counter === 'Counter 1' || s.name === 'General Inquiry'),
+        'Counter 2': services[0].subServices.filter(s => s.counter === 'Counter 2'),
+        'Counter 3': services[2].subServices.filter(s => s.counter === 'Counter 3'),
+        'Counter 4': services[1].subServices.filter(s => s.counter === 'Counter 4'),
+        'Counter 5': [services[1].subServices[1]], // Extra mortgage
+        'Counter 6': [services[2].subServices[2]], // Extra wire transfer
+    };
+
+    // Make sure all counters have at least one service type to assign
+    if (counterServices['Counter 5'].length === 0) counterServices['Counter 5'] = [services[0].subServices[0]];
+    if (counterServices['Counter 6'].length === 0) counterServices['Counter 6'] = [services[0].subServices[1]];
+
+
+    for (let i = 0; i < 50; i++) {
+        const checkInTime = new Date(now.getTime() - (50 - i) * 2 * 60000);
         const isInService = i < 6;
         
-        const memberService = { 
-            ...service,
-            // Assign to one of the 6 counters sequentially
-            counter: `Counter ${i + 1}`
+        // Assign customers to counters in a round-robin fashion for a distributed queue
+        const counterIndex = (i % 6) + 1;
+        const counterName = `Counter ${counterIndex}`;
+        const servicePool = counterServices[counterName];
+        const assignedService = servicePool[Math.floor(Math.random() * servicePool.length)];
+
+        const memberService = {
+            ...assignedService,
+            counter: isInService ? counterName : assignedService.counter // Assign to specific counter only if in service
         };
 
-        return {
+        queue.push({
             id: Date.now() + i,
-            ticketNumber: `A-${String(i + 1).padStart(3, '0')}`, // Use static numbers starting from A-001
+            ticketNumber: `A-${String(i + 1).padStart(3, '0')}`,
             name: `Customer ${i + 1}`,
             phone: `012345678${String(10 + i).padStart(2, '0')}`,
             checkInTime: checkInTime,
-            estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * service.avgTime * 60000),
+            estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * assignedService.avgTime * 60000),
             status: isInService ? 'in-service' : 'waiting',
-            services: [memberService], // Start with one service for simplicity
-            assignedTo: isInService ? (i % 4) + 2 : undefined, // Assign to mock staff
-        };
-    });
+            services: [memberService],
+            assignedTo: isInService ? (i % 4) + 2 : undefined,
+        });
+    }
+    return queue;
 };
 
 
