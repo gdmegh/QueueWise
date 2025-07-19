@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, LayoutDashboard, Info, Ticket, Shield, UserCog } from 'lucide-react';
+import { Users, LayoutDashboard, Ticket, Shield, UserCog } from 'lucide-react';
 import { Button } from './ui/button';
 
 export function Header() {
@@ -19,12 +19,6 @@ export function Header() {
             <Button variant="ghost">
               <LayoutDashboard className="mr-2 h-4 w-4" />
               Live Queue
-            </Button>
-          </Link>
-           <Link href="/about" passHref>
-            <Button variant="ghost">
-              <Info className="mr-2 h-4 w-4" />
-              About
             </Button>
           </Link>
           <Link href="/token" passHref>
