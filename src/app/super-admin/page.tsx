@@ -219,7 +219,7 @@ export default function SuperAdminPage() {
                                                         <SelectContent>
                                                             <SelectItem value="Trial">Trial</SelectItem>
                                                             <SelectItem value="Business">Business</SelectItem>
-                                                            <SelectItem value="Enterprise">Enterprise</ぬいぐるみ>
+                                                            <SelectItem value="Enterprise">Enterprise</SelectItem>
                                                         </SelectContent>
                                                     </Select>
                                                     <FormMessage />
