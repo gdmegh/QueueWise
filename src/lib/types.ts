@@ -39,3 +39,13 @@ export interface Shift {
   start: Date;
   end: Date;
 }
+
+export interface ShiftChangeRequest {
+  id: number;
+  userId: number;
+  requesterName: string;
+  requestedStart: Date;
+  requestedEnd: Date;
+  reason: string;
+  status: 'pending' | 'approved' | 'denied';
+}

@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { User, Shift, QueueMember } from '@/lib/types';
+import { User, Shift, QueueMember, ShiftChangeRequest } from '@/lib/types';
 import { services } from '@/lib/services';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -43,6 +43,7 @@ export default function StaffPage() {
   const [users, setUsers] = useLocalStorage<User[]>('users', []);
   const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
   const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
+  const [shiftRequests, setShiftRequests] = useLocalStorage<ShiftChangeRequest[]>('shiftRequests', []);
   const [activeToken, setActiveToken] = useState<QueueMember | null>(null);
   const [isResolveModalOpen, setResolveModalOpen] = useState(false);
   const [isTransferModalOpen, setTransferModalOpen] = useState(false);
@@ -90,8 +91,18 @@ export default function StaffPage() {
   };
 
   const onShiftRequestSubmit = (data: z.infer<typeof shiftRequestFormSchema>) => {
-    // In a real app, this would send a request to a backend.
-    console.log("Shift change request:", MOCK_CURRENT_STAFF.id, data);
+    const newRequest: ShiftChangeRequest = {
+        id: Date.now(),
+        userId: MOCK_CURRENT_STAFF.id,
+        requesterName: MOCK_CURRENT_STAFF.name,
+        requestedStart: new Date(`${data.fromDate}T${data.fromTime}`),
+        requestedEnd: new Date(`${data.toDate}T${data.toTime}`),
+        reason: data.reason,
+        status: 'pending',
+    };
+    
+    setShiftRequests(prev => [...prev, newRequest]);
+    
     toast({ title: "Request Sent", description: "Your shift change request has been sent for approval." });
     shiftRequestForm.reset();
     setShiftRequestModalOpen(false);
