@@ -28,7 +28,7 @@ const createInitialQueue = (): QueueMember[] => {
 
         return {
             id: Date.now() + i,
-            ticketNumber: `A-${String(101 + i).padStart(3, '0')}`,
+            ticketNumber: `A-${String(i + 1).padStart(3, '0')}`, // Use static numbers starting from A-001
             name: `Customer ${i + 1}`,
             phone: `012345678${String(10 + i).padStart(2, '0')}`,
             checkInTime: checkInTime,
