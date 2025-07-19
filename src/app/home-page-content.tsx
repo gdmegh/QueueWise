@@ -96,7 +96,7 @@ export default function HomePageContent() {
 
         <Tabs defaultValue="guest" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="guest">New Patient Check-in</TabsTrigger>
+                <TabsTrigger value="guest">Check-in as Guest</TabsTrigger>
                 <TabsTrigger value="login">Registered Patient</TabsTrigger>
             </TabsList>
             <TabsContent value="guest" className="mt-4">
