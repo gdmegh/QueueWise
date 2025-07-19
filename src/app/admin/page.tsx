@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { User, Shift, QueueMember, ShiftChangeRequest } from '@/lib/types';
+import { User, Shift, QueueMember, ShiftChangeRequest, CompanySettings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -12,14 +12,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Edit, Trash2, UserPlus, CalendarDays, Loader2, Shield, BarChart, Bell, Check, X } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, UserPlus, CalendarDays, Loader2, Shield, BarChart, Bell, Check, X, Settings, Image as ImageIcon, Palette } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { differenceInMinutes, format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-
+import Image from 'next/image';
 
 // Mock current user - in a real app, this would come from an auth context
 const MOCK_CURRENT_USER: User = { id: 1, name: 'Admin User', role: 'admin' };
@@ -29,6 +29,13 @@ const staffFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
   role: z.enum(['staff', 'supervisor', 'admin']),
 });
+
+const companySettingsSchema = z.object({
+  name: z.string().min(1, 'Company name is required.'),
+  logoUrl: z.string().url('Please enter a valid URL.').optional().or(z.literal('')),
+  primaryColor: z.string().regex(/^(\d{1,3})\s(\d{1,3})%\s(\d{1,3})%$/, 'Invalid HSL color format. Use: H S% L%'),
+});
+
 
 export default function AdminPage() {
   const [users, setUsers] = useLocalStorage<User[]>('users', [
@@ -48,11 +55,22 @@ export default function AdminPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
+  const [companySettings, setCompanySettings] = useLocalStorage<CompanySettings>('companySettings', {
+    name: 'QueueWise',
+    logoUrl: '/logo.svg', // Placeholder
+    primaryColor: '45 85% 60%',
+  });
+
   const staffForm = useForm<z.infer<typeof staffFormSchema>>({
     resolver: zodResolver(staffFormSchema),
   });
 
-  const hasPermission = (permission: 'manageStaff' | 'manageShifts' | 'manageRequests') => {
+  const settingsForm = useForm<z.infer<typeof companySettingsSchema>>({
+    resolver: zodResolver(companySettingsSchema),
+    defaultValues: companySettings,
+  });
+
+  const hasPermission = (permission: 'manageStaff' | 'manageShifts' | 'manageRequests' | 'manageSettings') => {
     if (MOCK_CURRENT_USER.role === 'admin') return true;
     if (MOCK_CURRENT_USER.role === 'supervisor' && (permission === 'manageShifts' || permission === 'manageRequests')) return true;
     return false;
@@ -87,6 +105,13 @@ export default function AdminPage() {
     }
     setIsFormOpen(false);
   }
+
+  const onSettingsSubmit = (data: z.infer<typeof companySettingsSchema>) => {
+    setCompanySettings(data);
+    // This is a simple way to apply the theme. A more robust solution might involve a theme provider context.
+    document.documentElement.style.setProperty('--primary', data.primaryColor);
+    alert('Settings saved! The primary color has been updated.');
+  };
 
   const handleRequestAction = (requestId: number, status: 'approved' | 'denied') => {
     setShiftRequests(prev => prev.map(req => 
@@ -139,11 +164,11 @@ export default function AdminPage() {
           <CardTitle className="flex items-center gap-2 text-2xl text-primary">
             <Shield /> Admin Dashboard
           </CardTitle>
-          <CardDescription>Manage staff, shifts, and system settings.</CardDescription>
+          <CardDescription>Manage staff, shifts, and system settings for {companySettings.name}.</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="dashboard">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="dashboard"><BarChart className="mr-2"/>Dashboard</TabsTrigger>
               <TabsTrigger value="staff" disabled={!hasPermission('manageStaff')}>Staff Management</TabsTrigger>
               <TabsTrigger value="shifts" disabled={!hasPermission('manageShifts')}>Shift Management</TabsTrigger>
@@ -151,10 +176,11 @@ export default function AdminPage() {
                 Shift Requests 
                 {pendingRequestsCount > 0 && <Badge className="ml-2">{pendingRequestsCount}</Badge>}
               </TabsTrigger>
+              <TabsTrigger value="setup" disabled={!hasPermission('manageSettings')}><Settings className="mr-2"/>Setup</TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="mt-4">
-               <AnalyticsDashboard analytics={getAnalyticsData()} />
+               <AnalyticsDashboard analytics={getAnalyticsData()} allServiced={[...serviced, ...queue.filter(q => q.status === 'serviced')]} />
             </TabsContent>
 
             <TabsContent value="staff" className="mt-4">
@@ -277,6 +303,75 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+            
+            <TabsContent value="setup" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Company Setup</CardTitle>
+                  <CardDescription>Customize the application's appearance and branding.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Form {...settingsForm}>
+                    <form onSubmit={settingsForm.handleSubmit(onSettingsSubmit)} className="space-y-6 max-w-lg">
+                      <FormField
+                          control={settingsForm.control}
+                          name="name"
+                          render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Company Name</FormLabel>
+                              <FormControl>
+                                  <Input placeholder="Your Company Inc." {...field} />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={settingsForm.control}
+                          name="logoUrl"
+                          render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Logo URL</FormLabel>
+                              <div className="flex items-center gap-4">
+                                <FormControl>
+                                    <Input placeholder="https://example.com/logo.png" {...field} />
+                                </FormControl>
+                                {field.value ? (
+                                    <Image data-ai-hint="logo" src={field.value} alt="Company Logo" width={40} height={40} className="rounded-md bg-muted object-contain"/>
+                                ) : (
+                                    <div className="w-10 h-10 flex items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                        <ImageIcon/>
+                                    </div>
+                                )}
+                              </div>
+                              <FormMessage />
+                          </FormItem>
+                          )}
+                      />
+                      <FormField
+                          control={settingsForm.control}
+                          name="primaryColor"
+                          render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Primary Color (HSL)</FormLabel>
+                               <div className="flex items-center gap-4">
+                                <FormControl>
+                                    <Input placeholder="e.g. 220 14% 10%" {...field} />
+                                </FormControl>
+                                <div className="w-10 h-10 rounded-md border" style={{ backgroundColor: `hsl(${field.value})` }}/>
+                               </div>
+                              <FormMessage />
+                          </FormItem>
+                          )}
+                      />
+                      <Button type="submit">
+                          {settingsForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Save Settings'}
+                      </Button>
+                    </form>
+                  </Form>
+                </CardContent>
+              </Card>
+            </TabsContent>
 
 
           </Tabs>
@@ -335,3 +430,5 @@ export default function AdminPage() {
     </main>
   );
 }
+
+    

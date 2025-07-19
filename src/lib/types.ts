@@ -49,3 +49,11 @@ export interface ShiftChangeRequest {
   reason: string;
   status: 'pending' | 'approved' | 'denied';
 }
+
+export interface CompanySettings {
+  name: string;
+  logoUrl: string;
+  primaryColor: string; // HSL format e.g. "220 14% 10%"
+}
+
+    
