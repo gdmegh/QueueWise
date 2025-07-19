@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { differenceInMinutes } from 'date-fns';
 
 import { CheckInForm } from '@/components/forms/CheckInForm';
 import { WaitTimeCard } from '@/components/queue/WaitTimeCard';
@@ -17,7 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Ticket, LogIn, Bell } from 'lucide-react';
+import { Ticket, LogIn } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as QueueService from '@/lib/queue-service';
@@ -151,16 +150,16 @@ export default function HomePageContent() {
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Left column for Check-in and Wait Time */}
-        <div className="lg:col-span-1 space-y-8 sticky top-24">
+       <div className="space-y-8">
+        {/* Check-in and Wait Time Section */}
+        <div className="space-y-8">
             <div className="text-center">
                 <Ticket className="mx-auto h-12 w-12 text-primary" />
                 <h1 className="text-3xl font-bold tracking-tight text-primary mt-4">Welcome to GD Clinic</h1>
                 <p className="text-muted-foreground mt-2">Your health is our priority. Please check in to begin.</p>
             </div>
 
-            <Tabs defaultValue="guest" className="w-full">
+            <Tabs defaultValue="guest" className="w-full max-w-lg mx-auto">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="guest">New Patient Check-in</TabsTrigger>
                     <TabsTrigger value="login">Registered Patient</TabsTrigger>
@@ -207,15 +206,17 @@ export default function HomePageContent() {
                     </Card>
                 </TabsContent>
             </Tabs>
-            <WaitTimeCard 
-                queueLength={waitingQueue.length} 
-                servicedCount={servicedToday}
-                nextTicket={nextInLine?.ticketNumber}
-            />
+            <div className="max-w-lg mx-auto">
+                <WaitTimeCard 
+                    queueLength={waitingQueue.length} 
+                    servicedCount={servicedToday}
+                    nextTicket={nextInLine?.ticketNumber}
+                />
+            </div>
         </div>
         
-        {/* Right column for Queue Display */}
-        <div className="lg:col-span-2">
+        {/* Queue Display Section */}
+        <div>
              <QueueDisplay 
                 queue={queue} 
                 onEditService={handleEditService} 
