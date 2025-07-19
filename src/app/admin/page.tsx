@@ -3,7 +3,7 @@
 
 import { useState } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { User, Shift } from '@/lib/types';
+import { User, Shift, QueueMember } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -12,10 +12,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Edit, Trash2, UserPlus, CalendarDays, Loader2, Shield } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, UserPlus, CalendarDays, Loader2, Shield, BarChart } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
+import { differenceInMinutes } from 'date-fns';
 
 // Mock current user - in a real app, this would come from an auth context
 const MOCK_CURRENT_USER: User = { id: 1, name: 'Admin User', role: 'admin' };
@@ -44,12 +46,21 @@ export default function AdminPage() {
     { id: 2, userId: 3, start: new Date('2024-08-01T10:00:00'), end: new Date('2024-08-01T18:00:00')},
     { id: 3, userId: 4, start: new Date('2024-08-01T09:00:00'), end: new Date('2024-08-01T17:00:00')},
   ]);
+  const [queue] = useLocalStorage<QueueMember[]>('queue', []);
+  const [serviced] = useLocalStorage<QueueMember[]>('serviced', []);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const staffForm = useForm<z.infer<typeof staffFormSchema>>({
     resolver: zodResolver(staffFormSchema),
   });
+
+  // Basic check for permissions - can be expanded
+  const hasPermission = (permission: 'manageStaff' | 'manageShifts') => {
+    if (MOCK_CURRENT_USER.role === 'admin') return true;
+    if (MOCK_CURRENT_USER.role === 'supervisor' && permission === 'manageShifts') return true;
+    return false;
+  }
 
   const handleEditUser = (user: User) => {
     setEditingUser(user);
@@ -80,13 +91,30 @@ export default function AdminPage() {
     }
     setIsFormOpen(false);
   }
-  
-  // Basic check for permissions - can be expanded
-  const hasPermission = (permission: 'manageStaff' | 'manageShifts') => {
-    if (MOCK_CURRENT_USER.role === 'admin') return true;
-    if (MOCK_CURRENT_USER.role === 'supervisor' && permission === 'manageShifts') return true;
-    return false;
+
+  const getAnalyticsData = () => {
+      const allServiced = [...serviced, ...queue.filter(q => q.status === 'serviced')];
+      const servicedCount = allServiced.length;
+      const feedbackReceived = allServiced.filter(m => m.feedback).length;
+      const totalWaiting = queue.filter(q => q.status === 'waiting').length;
+
+      if (servicedCount === 0) {
+        return { totalWaiting, servicedCount, averageServiceTime: 0, maxWaitTime: 0, feedbackReceived };
+      }
+
+      const waitTimes = allServiced.map(m =>
+        Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime)))
+      );
+      const maxWaitTime = Math.max(...waitTimes);
+      const totalServiceTime = allServiced.reduce(
+        (acc, m) => acc + Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime))),
+        0
+      );
+      const averageServiceTime = totalServiceTime / servicedCount;
+
+      return { totalWaiting, servicedCount, averageServiceTime, maxWaitTime, feedbackReceived };
   }
+  
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -98,19 +126,23 @@ export default function AdminPage() {
           <CardDescription>Manage staff, shifts, and system settings.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="staff">
+          <Tabs defaultValue="dashboard">
             <TabsList>
+              <TabsTrigger value="dashboard"><BarChart className="mr-2"/>Dashboard</TabsTrigger>
               <TabsTrigger value="staff" disabled={!hasPermission('manageStaff')}>Staff Management</TabsTrigger>
               <TabsTrigger value="shifts" disabled={!hasPermission('manageShifts')}>Shift Management</TabsTrigger>
-              <TabsTrigger value="requests" disabled>Shift Requests</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="dashboard" className="mt-4">
+               <AnalyticsDashboard analytics={getAnalyticsData()} />
+            </TabsContent>
 
             <TabsContent value="staff" className="mt-4">
               <Card>
                 <CardHeader>
                   <div className="flex justify-between items-center">
                     <CardTitle>Staff List</CardTitle>
-                    <Button onClick={handleAddNewUser}><UserPlus className="mr-2"/> Add New Staff</Button>
+                    <Button onClick={handleAddNewUser} disabled={!hasPermission('manageStaff')}><UserPlus className="mr-2"/> Add New Staff</Button>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -128,10 +160,10 @@ export default function AdminPage() {
                           <TableCell>{user.name}</TableCell>
                           <TableCell className="capitalize">{user.role}</TableCell>
                           <TableCell className="text-right">
-                             <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)}>
+                             <Button variant="ghost" size="icon" onClick={() => handleEditUser(user)} disabled={!hasPermission('manageStaff')}>
                                 <Edit className="h-4 w-4" />
                              </Button>
-                             <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} disabled={user.id === MOCK_CURRENT_USER.id}>
+                             <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} disabled={!hasPermission('manageStaff') || user.id === MOCK_CURRENT_USER.id}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                              </Button>
                           </TableCell>
@@ -172,10 +204,6 @@ export default function AdminPage() {
                          </Table>
                     </CardContent>
                 </Card>
-            </TabsContent>
-            
-            <TabsContent value="requests" className="mt-4">
-                 <p className="text-center text-muted-foreground p-8">Shift change request and approval system coming soon.</p>
             </TabsContent>
 
           </Tabs>
