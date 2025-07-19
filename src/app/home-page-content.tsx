@@ -16,10 +16,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Ticket, LogIn } from 'lucide-react';
+import { Ticket, LogIn, Clock } from 'lucide-react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as QueueService from '@/lib/queue-service';
+import { Badge } from '@/components/ui/badge';
 
 const checkInFormSchema = z.object({
   phone: z.string().regex(/^\d{10,15}$/, { message: 'Please enter a valid phone number.' }),
@@ -32,6 +33,8 @@ const loginFormSchema = z.object({
 
 const MAX_QUEUE_SIZE = 50;
 const REFRESH_INTERVAL_MS = 5000;
+
+const sampleUpcomingTokens = ['A-118', 'A-119', 'A-120', 'A-121', 'A-122', 'A-124', 'A-125'];
 
 export default function HomePageContent() {
   const router = useRouter();
@@ -223,6 +226,27 @@ export default function HomePageContent() {
                 onSetFeedback={handleSetFeedback} 
                 isPublicView={true}
               />
+        </div>
+
+        {/* Upcoming Tokens Section */}
+        <div>
+          <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 font-headline text-primary">
+                <Clock /> Upcoming Tokens (Next 30 mins)
+              </CardTitle>
+              <CardDescription>This is a sample list for kiosk display purposes.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-wrap gap-4 justify-center">
+                    {sampleUpcomingTokens.map(token => (
+                        <Badge key={token} variant="secondary" className="text-xl font-bold tracking-wider px-4 py-2">
+                            {token}
+                        </Badge>
+                    ))}
+                </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </main>
