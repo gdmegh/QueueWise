@@ -5,17 +5,31 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Crown, BarChart, Settings, PlusCircle } from 'lucide-react';
+import { Crown, BarChart, Settings, PlusCircle, Loader2 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartConfig } from '@/components/ui/chart';
+import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
 
-// Mock data for companies
-const mockCompanies = [
-  { id: 'comp-001', name: 'Innovate Corp', status: 'active', users: 150, plan: 'Enterprise' },
-  { id: 'comp-002', name: 'Solutions Inc.', status: 'active', users: 75, plan: 'Business' },
-  { id: 'comp-003', name: 'Data Systems', status: 'trial', users: 10, plan: 'Trial' },
-  { id: 'comp-004', name: 'NextGen Ventures', status: 'inactive', users: 0, plan: 'None' },
-  { id: 'comp-005', name: 'Global Connect', status: 'active', users: 300, plan: 'Enterprise' },
-];
+interface Company {
+  id: string;
+  name: string;
+  status: 'active' | 'trial' | 'inactive';
+  users: number;
+  plan: 'Enterprise' | 'Business' | 'Trial' | 'None';
+}
+
+const addCompanyFormSchema = z.object({
+  name: z.string().min(2, 'Company name must be at least 2 characters.'),
+  plan: z.enum(['Enterprise', 'Business', 'Trial']),
+});
 
 const SuperAdminAnalyticsCard = ({ title, value, description }: { title: string, value: string, description: string }) => (
     <Card>
@@ -45,13 +59,6 @@ const companiesChartConfig = {
   },
 } satisfies ChartConfig;
 
-const plansChartData = [
-  { plan: 'Enterprise', companies: 2, fill: 'hsl(var(--chart-1))' },
-  { plan: 'Business', companies: 1, fill: 'hsl(var(--chart-2))' },
-  { plan: 'Trial', companies: 1, fill: 'hsl(var(--chart-3))' },
-  { plan: 'None', companies: 1, fill: 'hsl(var(--chart-5))' },
-];
-
 const plansChartConfig = {
     companies: {
       label: 'Companies',
@@ -76,6 +83,49 @@ const plansChartConfig = {
 
 
 export default function SuperAdminPage() {
+    const { toast } = useToast();
+    const [companies, setCompanies] = useLocalStorage<Company[]>('companies', [
+        { id: 'comp-001', name: 'Innovate Corp', status: 'active', users: 150, plan: 'Enterprise' },
+        { id: 'comp-002', name: 'Solutions Inc.', status: 'active', users: 75, plan: 'Business' },
+        { id: 'comp-003', name: 'Data Systems', status: 'trial', users: 10, plan: 'Trial' },
+        { id: 'comp-004', name: 'NextGen Ventures', status: 'inactive', users: 0, plan: 'None' },
+        { id: 'comp-005', name: 'Global Connect', status: 'active', users: 300, plan: 'Enterprise' },
+    ]);
+    const [isAddModalOpen, setAddModalOpen] = useState(false);
+
+    const addCompanyForm = useForm<z.infer<typeof addCompanyFormSchema>>({
+        resolver: zodResolver(addCompanyFormSchema),
+        defaultValues: { name: '', plan: 'Trial' },
+    });
+
+    const onAddCompanySubmit = (data: z.infer<typeof addCompanyFormSchema>) => {
+        const newCompany: Company = {
+            id: `comp-${Date.now()}`,
+            name: data.name,
+            plan: data.plan,
+            status: data.plan === 'Trial' ? 'trial' : 'active',
+            users: 0,
+        };
+        setCompanies(prev => [...prev, newCompany]);
+        toast({ title: 'Company Added', description: `${data.name} has been added to the platform.`});
+        setAddModalOpen(false);
+        addCompanyForm.reset();
+    };
+
+    const totalUsers = companies.reduce((acc, comp) => acc + (comp.status === 'active' ? comp.users : 0), 0);
+    const activeSubscriptions = companies.filter(c => c.plan === 'Business' || c.plan === 'Enterprise').length;
+
+    const plansChartData = Object.entries(
+        companies.reduce((acc, comp) => {
+            acc[comp.plan] = (acc[comp.plan] || 0) + 1;
+            return acc;
+        }, {} as Record<string, number>)
+    ).map(([plan, count]) => ({
+        plan,
+        companies: count,
+        fill: plansChartConfig[plan as keyof typeof plansChartConfig]?.color || 'hsl(var(--muted))'
+    }));
+
     return (
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
@@ -90,9 +140,9 @@ export default function SuperAdminPage() {
                     <div>
                         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2"><BarChart/> Platform Analytics</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <SuperAdminAnalyticsCard title="Total Companies" value="5" description="All registered companies." />
-                            <SuperAdminAnalyticsCard title="Active Users" value="525" description="Total users across all active companies." />
-                            <SuperAdminAnalyticsCard title="Active Subscriptions" value="3" description="Companies on paid plans." />
+                            <SuperAdminAnalyticsCard title="Total Companies" value={String(companies.length)} description="All registered companies." />
+                            <SuperAdminAnalyticsCard title="Active Users" value={String(totalUsers)} description="Total users across all active companies." />
+                            <SuperAdminAnalyticsCard title="Active Subscriptions" value={String(activeSubscriptions)} description="Companies on paid plans." />
                              <SuperAdminAnalyticsCard title="Platform Health" value="99.9%" description="System uptime over the last 30 days." />
                         </div>
                     </div>
@@ -138,7 +188,48 @@ export default function SuperAdminPage() {
                     <div>
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-semibold">Company Management</h2>
-                            <Button><PlusCircle className="mr-2"/> Add New Company</Button>
+                            <Dialog open={isAddModalOpen} onOpenChange={setAddModalOpen}>
+                                <DialogTrigger asChild>
+                                     <Button><PlusCircle className="mr-2"/> Add New Company</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Add a New Company</DialogTitle>
+                                    </DialogHeader>
+                                    <Form {...addCompanyForm}>
+                                        <form onSubmit={addCompanyForm.handleSubmit(onAddCompanySubmit)} className="space-y-4">
+                                            <FormField control={addCompanyForm.control} name="name" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Company Name</FormLabel>
+                                                    <FormControl><Input placeholder="New Company Inc." {...field} /></FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={addCompanyForm.control} name="plan" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Subscription Plan</FormLabel>
+                                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                        <FormControl>
+                                                            <SelectTrigger>
+                                                                <SelectValue placeholder="Select a plan" />
+                                                            </SelectTrigger>
+                                                        </FormControl>
+                                                        <SelectContent>
+                                                            <SelectItem value="Trial">Trial</SelectItem>
+                                                            <SelectItem value="Business">Business</SelectItem>
+                                                            <SelectItem value="Enterprise">Enterprise</SelectItem>
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <Button type="submit" className="w-full">
+                                                {addCompanyForm.formState.isSubmitting ? <Loader2 className="animate-spin" /> : 'Create Company'}
+                                            </Button>
+                                        </form>
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                         <Card>
                             <CardContent className="p-0">
@@ -153,7 +244,7 @@ export default function SuperAdminPage() {
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
-                                        {mockCompanies.map(company => (
+                                        {companies.map(company => (
                                             <TableRow key={company.id}>
                                                 <TableCell className="font-medium">{company.name}</TableCell>
                                                 <TableCell>
