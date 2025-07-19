@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, LayoutDashboard, Ticket, Shield, UserCog, UserCircle } from 'lucide-react';
+import { Users, LayoutDashboard, Monitor, Shield, UserCog, UserCircle } from 'lucide-react';
 import { Button } from './ui/button';
 
 export function Header() {
@@ -19,6 +19,12 @@ export function Header() {
             <Button variant="ghost">
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Live Queue
+            </Button>
+          </Link>
+           <Link href="/display" passHref>
+            <Button variant="ghost">
+                <Monitor className="mr-2 h-4 w-4" />
+                Display
             </Button>
           </Link>
            <Link href="/account" passHref>
