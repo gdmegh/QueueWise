@@ -28,30 +28,31 @@ export const createInitialQueue = (): QueueMember[] => {
     
     // Distribute services to create a predictable queue for each counter
     const counterServices: { [key: string]: SubService[] } = {
-        'Counter 1': services.find(s => s.name === 'Personal Banking')?.subServices.filter(s => s.counter === 'Counter 1' || s.name === 'General Inquiry') || [],
-        'Counter 2': services.find(s => s.name === 'Personal Banking')?.subServices.filter(s => s.counter === 'Counter 2') || [],
-        'Counter 3': services.find(s => s.name === 'Transactions')?.subServices.filter(s => s.counter === 'Counter 3') || [],
-        'Counter 4': services.find(s => s.name === 'Loans & Mortgages')?.subServices.filter(s => s.counter === 'Counter 4') || [],
+        'Room 1': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 1'),
+        'Room 2': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 2'),
+        'Room 3': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 3'),
+        'Room 4': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 4'),
+        'Lab': services.flatMap(s => s.subServices).filter(s => s.counter === 'Lab'),
+        'Imaging': services.flatMap(s => s.subServices).filter(s => s.counter === 'Imaging'),
+        'Pharmacy Counter': services.flatMap(s => s.subServices).filter(s => s.counter === 'Pharmacy Counter'),
+        'Room 5': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 5'),
     };
-    // Ensure counters 5 & 6 have pools for round-robin
-    counterServices['Counter 5'] = counterServices['Counter 2']; 
-    counterServices['Counter 6'] = counterServices['Counter 3'];
+    
+    const allCounters = ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5', 'Lab', 'Imaging', 'Pharmacy Counter'];
 
-    const allSubServices = services.flatMap(s => s.subServices);
 
     for (let i = 0; i < 50; i++) {
         const checkInTime = new Date(now.getTime() - (50 - i) * 2 * 60000);
         
         // Assign customers to counters in a round-robin fashion for a distributed queue
-        const counterIndex = (i % 6) + 1;
-        const counterName = `Counter ${counterIndex}`;
-        const servicePool = counterServices[counterName].length > 0 ? counterServices[counterName] : allSubServices;
-        const assignedService = servicePool[Math.floor(Math.random() * servicePool.length)];
+        const counterName = allCounters[i % allCounters.length];
+        const servicePool = counterServices[counterName as keyof typeof counterServices] || [];
+        const assignedService = servicePool.length > 0 ? servicePool[Math.floor(Math.random() * servicePool.length)] : services[0].subServices[0];
 
         queue.push({
             id: Date.now() + i,
             ticketNumber: `A-${String(i + 1).padStart(3, '0')}`,
-            name: `Customer ${i + 1}`,
+            name: `Patient ${i + 1}`,
             phone: `012345678${String(10 + i).padStart(2, '0')}`,
             checkInTime: checkInTime,
             // Estimate service time based on check-in + avg time. Actual start time will be later.
@@ -126,7 +127,7 @@ export const runQueueSimulation = (): { updatedQueue: QueueMember[], newlyServic
         .filter(m => m.status === 'in-service')
         .flatMap(m => m.services.map(s => s.counter).filter(Boolean) as string[]);
     
-    const availableCounters = Array.from({length: 6}, (_, i) => `Counter ${i+1}`)
+    const availableCounters = Array.from({length: 6}, (_, i) => `Room ${i+1}`)
         .filter(c => !servingCounters.includes(c));
 
     if (availableCounters.length > 0) {

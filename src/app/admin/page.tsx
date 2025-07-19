@@ -56,9 +56,9 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const [companySettings, setCompanySettings] = useLocalStorage<CompanySettings>('companySettings', {
-    name: 'HealthQueue',
+    name: 'Shafa Clinic Kabul',
     logoUrl: '/assets/logo.svg', // Standardized path
-    primaryColor: '180 85% 40%',
+    primaryColor: '217 91% 60%',
   });
 
   const staffForm = useForm<z.infer<typeof staffFormSchema>>({

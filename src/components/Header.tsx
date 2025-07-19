@@ -10,7 +10,7 @@ export function Header() {
   const [companySettings] = useLocalStorage<CompanySettings>('companySettings', {
     name: 'QueueWise',
     logoUrl: '/assets/logo.svg', // Standardized path
-    primaryColor: '45 85% 60%',
+    primaryColor: '217 91% 60%',
   });
 
   return (
@@ -23,7 +23,7 @@ export function Header() {
                 <Users className="h-6 w-6 text-primary-foreground" />
               }
             </div>
-            <h1 className="text-2xl font-bold text-primary tracking-tight font-headline bg-clip-text text-transparent bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600">
+            <h1 className="text-2xl font-bold text-primary tracking-tight font-headline">
               {companySettings.name}
             </h1>
         </Link>

@@ -106,7 +106,7 @@ export default function DisplayPage() {
     const nowServing = queue.filter(m => m.status === 'in-service');
     const waitingQueue = queue.filter(m => m.status === 'waiting');
     
-    const counterNames = Array.from({ length: 6 }, (_, i) => `Counter ${i + 1}`);
+    const counterNames = Array.from({ length: 6 }, (_, i) => `Room ${i + 1}`);
 
     const counters = counterNames.map((name, i) => {
         const servingMember = nowServing.find(m => m.services.some(s => s.counter === name));
@@ -131,7 +131,7 @@ export default function DisplayPage() {
     return (
         <main className="flex flex-col h-screen bg-background text-foreground p-8">
             <header className="text-center mb-6">
-                <h1 className="text-6xl font-bold text-primary tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-600">
+                <h1 className="text-6xl font-bold text-primary tracking-tight">
                     Queue Status
                 </h1>
             </header>
@@ -152,7 +152,7 @@ export default function DisplayPage() {
 
                 {/* Counter-specific Queues */}
                 <div className="lg:col-span-2 flex flex-col gap-6">
-                     <h2 className="text-4xl font-bold text-primary flex items-center gap-3"><Users /> Up Next By Counter</h2>
+                     <h2 className="text-4xl font-bold text-primary flex items-center gap-3"><Users /> Up Next By Room</h2>
                     <div className="grid grid-cols-2 grid-rows-3 gap-4 flex-grow">
                          {counterQueues.map(({ name, queue: counterQueue }) => (
                             <CounterQueueCard key={name} title={name} queue={counterQueue} nowServing={nowServing} />
