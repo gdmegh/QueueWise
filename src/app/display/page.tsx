@@ -54,9 +54,6 @@ const CounterStatusCard = ({ counterNumber, member }: { counterNumber: number; m
                     <div className="text-5xl font-extrabold tracking-wider text-white mb-2">
                         {member.ticketNumber}
                     </div>
-                    <div className="text-lg text-muted-foreground truncate">
-                        {member.name}
-                    </div>
                 </>
             ) : (
                 <div className="text-2xl text-muted-foreground/50">Available</div>
