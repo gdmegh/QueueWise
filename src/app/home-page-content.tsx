@@ -147,6 +147,7 @@ export default function HomePageContent() {
 
   const waitingQueue = queue.filter(q => q.status === 'waiting');
   const servicedToday = serviced.length + queue.filter(q => q.status === 'serviced').length;
+  const nextInLine = waitingQueue.length > 0 ? waitingQueue[0] : null;
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -206,7 +207,11 @@ export default function HomePageContent() {
                     </Card>
                 </TabsContent>
             </Tabs>
-            <WaitTimeCard queueLength={waitingQueue.length} servicedCount={servicedToday} />
+            <WaitTimeCard 
+                queueLength={waitingQueue.length} 
+                servicedCount={servicedToday}
+                nextTicket={nextInLine?.ticketNumber}
+            />
         </div>
         
         {/* Right column for Queue Display */}

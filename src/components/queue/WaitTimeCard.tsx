@@ -2,15 +2,18 @@
 'use client';
 
 import { useState, useEffect, type FC } from 'react';
-import { BrainCircuit, Hourglass } from 'lucide-react';
+import { BrainCircuit, Hourglass, Ticket } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { IntelligentWaitTimePredictionOutput } from '@/ai/flows/intelligent-wait-time-prediction';
 import { getPredictedWaitTime } from '@/app/actions';
+import { Separator } from '../ui/separator';
+import { Badge } from '../ui/badge';
 
 interface WaitTimeCardProps {
   queueLength: number;
   servicedCount: number;
+  nextTicket?: string | null;
 }
 
 const WaitTimeDisplay: FC<{ prediction: IntelligentWaitTimePredictionOutput | null }> = ({ prediction }) => (
@@ -36,7 +39,7 @@ const WaitTimeSkeleton: FC = () => (
   </div>
 );
 
-export const WaitTimeCard: FC<WaitTimeCardProps> = ({ queueLength, servicedCount }) => {
+export const WaitTimeCard: FC<WaitTimeCardProps> = ({ queueLength, servicedCount, nextTicket }) => {
   const [prediction, setPrediction] = useState<IntelligentWaitTimePredictionOutput | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -63,6 +66,22 @@ export const WaitTimeCard: FC<WaitTimeCardProps> = ({ queueLength, servicedCount
       </CardHeader>
       <CardContent>
         {isLoading ? <WaitTimeSkeleton /> : <WaitTimeDisplay prediction={prediction} />}
+        
+        {nextTicket && (
+            <>
+                <Separator className="my-4"/>
+                <div className="space-y-2">
+                     <div className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium font-headline text-primary">Next In Line</CardTitle>
+                        <Ticket className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <Badge variant="secondary" className="text-lg py-1 px-3">
+                        {nextTicket}
+                    </Badge>
+                </div>
+            </>
+        )}
+
       </CardContent>
     </Card>
   );

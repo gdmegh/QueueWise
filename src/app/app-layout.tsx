@@ -10,7 +10,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isDisplayPage = pathname === '/display';
 
   return (
-     <body className="font-body antialiased h-full bg-gradient-to-br from-background to-black">
+     <body className="font-body antialiased h-full bg-background">
         {!isDisplayPage && <Header />}
         {children}
         <Toaster />
