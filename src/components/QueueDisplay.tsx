@@ -44,7 +44,7 @@ const serviceDetails: { [key: string]: { icon: React.ReactNode; counter: string 
 }, {} as { [key: string]: { icon: React.ReactNode; counter: string } });
 
 
-const NowServing: FC<{ member: QueueMember, onSetFeedback: (memberId: number, feedback: any) => void }> = ({ member, onSetFeedback }) => (
+const NowServing: FC<{ members: QueueMember[], onSetFeedback: (memberId: number, feedback: any) => void }> = ({ members, onSetFeedback }) => (
     <Card className="mb-6 bg-gradient-to-r from-accent/20 to-primary/20 border-primary/50">
         <CardHeader>
             <CardTitle className="text-3xl text-primary flex items-center justify-center gap-4">
@@ -52,26 +52,30 @@ const NowServing: FC<{ member: QueueMember, onSetFeedback: (memberId: number, fe
             </CardTitle>
         </CardHeader>
         <CardContent className="text-center">
-            <p className="text-5xl font-bold tracking-wider text-foreground">{member.ticketNumber}</p>
-            <p className="text-xl text-muted-foreground mt-2">{member.name}</p>
-            <div className="text-2xl font-semibold text-primary mt-4 space-y-1">
-              {member.services?.map((service, index) => (
-                <p key={index}>Please proceed to {service.counter} for {service.name}</p>
-              ))}
-            </div>
-            {member.status === 'serviced' && !member.feedback && <FeedbackForm member={member} onSubmitFeedback={onSetFeedback} />}
-            {member.status === 'serviced' && member.feedback && (
-                 <div className="mt-4 flex items-center justify-center gap-2 text-green-500">
-                    <CheckCircle className="h-5 w-5"/>
-                    <p className="font-semibold">Feedback Received. Thank you!</p>
+            {members.length > 0 ? members.map(member => (
+                <div key={member.id} className="mb-4">
+                    <p className="text-5xl font-bold tracking-wider text-foreground">{member.ticketNumber}</p>
+                    <p className="text-xl text-muted-foreground mt-2">{member.name}</p>
+                    <div className="text-2xl font-semibold text-primary mt-4 space-y-1">
+                      {member.services?.map((service, index) => (
+                        <p key={index}>Please proceed to {service.counter} for {service.name}</p>
+                      ))}
+                    </div>
+                    {member.status === 'serviced' && !member.feedback && <FeedbackForm member={member} onSubmitFeedback={onSetFeedback} />}
+                    {member.status === 'serviced' && member.feedback && (
+                         <div className="mt-4 flex items-center justify-center gap-2 text-green-500">
+                            <CheckCircle className="h-5 w-5"/>
+                            <p className="font-semibold">Feedback Received. Thank you!</p>
+                        </div>
+                    )}
                 </div>
-            )}
+            )) : <p>No one is being served right now.</p>}
         </CardContent>
     </Card>
 );
 
 export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSetFeedback }) => {
-  const nowServing = queue.find(m => m.status !== 'waiting'); // Could be in-service or serviced
+  const nowServing = queue.filter(m => m.status === 'in-service' || m.status === 'serviced');
   const upNext = queue.filter(m => m.status === 'waiting');
 
   return (
@@ -81,7 +85,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
             <CardDescription>Current waiting list and estimated service times.</CardDescription>
         </CardHeader>
         <CardContent>
-            {nowServing && <NowServing member={nowServing} onSetFeedback={onSetFeedback} />}
+            {nowServing.length > 0 && <NowServing members={nowServing} onSetFeedback={onSetFeedback} />}
             {upNext.length > 0 ? (
                 <div className="border rounded-lg overflow-hidden">
                     <Table>
@@ -131,7 +135,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
                     </Table>
                 </div>
             ) : (
-                !nowServing && (
+                nowServing.length === 0 && (
                  <div className="flex flex-col items-center justify-center text-center h-64 p-8 border-2 border-dashed rounded-lg bg-background">
                     <Users className="w-16 h-16 text-muted-foreground/30 mb-4" />
                     <p className="text-lg font-semibold font-headline">The queue is empty!</p>

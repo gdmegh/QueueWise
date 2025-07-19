@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -37,7 +38,7 @@ const createInitialQueue = (): QueueMember[] => {
             phone: `012345678${String(10 + i).padStart(2, '0')}`,
             checkInTime: checkInTime,
             estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * service.avgTime * 60000),
-            status: i < 1 ? 'serviced' : 'waiting',
+            status: i < 1 ? 'in-service' : 'waiting',
             services: [service],
             assignedTo: i < 3 ? 2 : undefined, // Assign first 3 to mock staff
         };
@@ -142,34 +143,65 @@ export default function QueuePage() {
   useEffect(() => {
     const simulation = setInterval(() => {
       setQueue(prevQueue => {
-        const queueWaiting = prevQueue.filter(m => m.status === 'waiting');
+        const nowServing = prevQueue.filter(m => m.status === 'in-service');
+        let newQueue = [...prevQueue];
 
-        if (queueWaiting.length > 0) {
-          const nextInLineId = queueWaiting[0].id;
+        // 1. Check if any 'in-service' customers are done
+        const now = new Date();
+        nowServing.forEach(member => {
+            if (new Date(member.estimatedServiceTime) <= now) {
+                // Move from queue to serviced
+                newQueue = newQueue.filter(m => m.id !== member.id);
+                setServiced(s => [...s, { ...member, status: 'serviced' }]);
+            }
+        });
+        
+        // 2. Fill empty counters
+        const servingCounters = newQueue.filter(m => m.status === 'in-service').flatMap(m => m.services.map(s => s.counter));
+        const availableCounters = Array.from({length: 6}, (_, i) => `Counter ${i+1}`).filter(c => !servingCounters.includes(c));
 
-          if (queueWaiting.length > 1) {
-            const upNext = queueWaiting[1];
-             toast({
-                title: 'Your turn is next!',
-                description: `${upNext.name}, please get ready. You are next in the queue.`,
-                action: (
-                   <div className="p-2 rounded-full bg-accent/80">
-                      <Bell className="h-6 w-6 text-accent-foreground" />
-                   </div>
-                )
-            });
+        const waitingQueue = newQueue.filter(m => m.status === 'waiting');
+        
+        if (waitingQueue.length > 0 && availableCounters.length > 0) {
+          const customersToServe = Math.min(waitingQueue.length, availableCounters.length);
+
+          for (let i = 0; i < customersToServe; i++) {
+              const nextInLine = waitingQueue[i];
+              const assignedCounter = availableCounters[i]; // This is a simplification
+              
+              newQueue = newQueue.map(member => 
+                member.id === nextInLine.id 
+                ? { 
+                    ...member, 
+                    status: 'in-service',
+                    // Re-assign counter for demo purposes, a real app would have better logic
+                    services: member.services.map(s => ({...s, counter: assignedCounter})),
+                    estimatedServiceTime: new Date(Date.now() + member.services.reduce((acc, s) => acc + s.avgTime, 0) * 60000)
+                  } 
+                : member
+              );
+
+              // Notify next person
+              if (waitingQueue[i+1]) {
+                const upNext = waitingQueue[i+1];
+                toast({
+                    title: 'Your turn is next!',
+                    description: `${upNext.name}, please get ready. You are next in the queue.`,
+                    action: (
+                      <div className="p-2 rounded-full bg-accent/80">
+                          <Bell className="h-6 w-6 text-accent-foreground" />
+                      </div>
+                    )
+                });
+              }
           }
-          
-          return prevQueue.map(member => 
-            member.id === nextInLineId ? { ...member, status: 'serviced' } : member
-          );
         }
-        return prevQueue;
+        return newQueue;
       });
     }, SIMULATION_INTERVAL_MS);
 
     return () => clearInterval(simulation);
-  }, [toast, setQueue]);
+  }, [toast, setQueue, setServiced]);
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -192,7 +224,7 @@ export default function QueuePage() {
               />
             </TabsContent>
             <TabsContent value="analytics" className="mt-4">
-              <AnalyticsDashboard analytics={analytics} />
+              <AnalyticsDashboard analytics={analytics} allServiced={[...serviced, ...queue.filter(q=> q.status === 'serviced')]} />
             </TabsContent>
           </Tabs>
         </div>

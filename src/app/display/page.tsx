@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect } from 'react';
@@ -5,8 +6,9 @@ import { useLocalStorage } from '@/hooks/use-local-storage';
 import { QueueMember } from '@/lib/types';
 import { WaitTimeCard } from '@/components/WaitTimeCard';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Users, List, Banknote, HandCoins, Clock } from 'lucide-react';
+import { Bell, Users, List, Banknote, HandCoins, Clock, UserCheck } from 'lucide-react';
 import { differenceInMinutes } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const REFRESH_INTERVAL_MS = 15000; // 15 seconds
 
@@ -39,6 +41,27 @@ const getWaitTime = (member: QueueMember, nowServing?: QueueMember): number => {
     return Math.max(0, differenceInMinutes(now, new Date(member.checkInTime)));
 };
 
+const CounterStatusCard = ({ counterNumber, member }: { counterNumber: number; member: QueueMember | null }) => (
+    <Card className={`flex flex-col items-center justify-center p-4 rounded-xl shadow-lg transition-all duration-500 ${member ? 'bg-primary/20 border-primary animate-pulse' : 'bg-muted/50'}`}>
+        <CardHeader className="p-2 text-center">
+            <CardTitle className="text-2xl text-primary/80 font-semibold">Counter {counterNumber}</CardTitle>
+        </CardHeader>
+        <CardContent className="p-2 flex flex-col items-center justify-center flex-grow">
+            {member ? (
+                <>
+                    <div className="text-5xl font-extrabold tracking-wider text-white mb-2">
+                        {member.ticketNumber}
+                    </div>
+                    <div className="text-lg text-muted-foreground truncate">
+                        {member.name}
+                    </div>
+                </>
+            ) : (
+                <div className="text-2xl text-muted-foreground/50">Available</div>
+            )}
+        </CardContent>
+    </Card>
+);
 
 export default function DisplayPage() {
     const [queue] = useLocalStorage<QueueMember[]>('queue', []);
@@ -56,8 +79,18 @@ export default function DisplayPage() {
         return () => clearInterval(intervalId);
     }, []);
 
-    const nowServing = queue.find(m => m.status !== 'waiting');
+    const nowServing = queue.filter(m => m.status === 'in-service');
     const upNext = queue.filter(m => m.status === 'waiting').slice(0, 10); // Limit to next 10
+
+    const counters = Array.from({ length: 6 }, (_, i) => {
+        const counterName = `Counter ${i + 1}`;
+        const servingMember = nowServing.find(m => m.services.some(s => s.counter === counterName));
+        return {
+            number: i + 1,
+            member: servingMember || null,
+        };
+    });
+
 
     return (
         <main className="flex flex-col h-screen bg-background text-foreground p-8">
@@ -69,27 +102,13 @@ export default function DisplayPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 flex-grow gap-8">
                 {/* Now Serving Section */}
-                <div className="lg:col-span-1 bg-card/50 rounded-xl shadow-2xl flex flex-col items-center justify-center p-8 border-2 border-primary animate-pulse">
-                    <h2 className="text-5xl font-bold text-primary mb-6 flex items-center gap-4">
-                        <Bell className="h-12 w-12" /> Now Serving
-                    </h2>
-                    {nowServing ? (
-                        <>
-                            <div className="text-9xl font-extrabold tracking-wider text-white mb-4">
-                                {nowServing.ticketNumber}
-                            </div>
-                            <div className="text-4xl text-muted-foreground mb-6">
-                                {nowServing.name}
-                            </div>
-                            <div className="text-3xl font-semibold text-primary/90 space-y-2">
-                                {nowServing.services?.map((service, index) => (
-                                    <p key={index}>Proceed to {service.counter}</p>
-                                ))}
-                            </div>
-                        </>
-                    ) : (
-                        <div className="text-4xl text-muted-foreground">No one is being served.</div>
-                    )}
+                <div className="lg:col-span-1 flex flex-col gap-4">
+                     <h2 className="text-4xl font-bold text-primary flex items-center gap-3"><UserCheck /> Now Serving</h2>
+                     <div className="grid grid-cols-2 grid-rows-3 gap-4 flex-grow">
+                        {counters.map(counter => (
+                            <CounterStatusCard key={counter.number} counterNumber={counter.number} member={counter.member} />
+                        ))}
+                    </div>
                 </div>
 
                 {/* Up Next & Wait Time Section */}
@@ -102,18 +121,18 @@ export default function DisplayPage() {
                                     <Badge variant="secondary" className="text-4xl px-4 py-2 col-span-1 justify-center">{member.ticketNumber}</Badge>
                                     <div className="text-3xl font-medium text-foreground col-span-1">{member.name}</div>
                                     <div className="flex items-center gap-3 col-span-1">
-                                        {(member.services || []).map((service, index) => (
-                                            <div key={index} className="flex items-center gap-2 text-muted-foreground">
+                                        {(member.services || []).map((service, i) => (
+                                            <div key={i} className="flex items-center gap-2 text-muted-foreground" title={service.name}>
                                                 {serviceIcons[service.name] || <List className="h-8 w-8" />}
                                             </div>
                                         ))}
                                         {(!member.services || member.services.length === 0) && (
-                                            <List className="h-8 w-8 text-muted-foreground" />
+                                            <List className="h-8 w-8 text-muted-foreground" title="Pending Selection" />
                                         )}
                                     </div>
                                     <div className="col-span-1 flex items-center justify-end gap-2 text-2xl text-muted-foreground">
                                         <Clock className="h-6 w-6" />
-                                        <span>{getWaitTime(upNext[index + 1] || member, nowServing)} min</span>
+                                        <span>{getWaitTime(upNext[index + 1] || member, nowServing[0])} min</span>
                                     </div>
                                 </div>
                             )) : (
