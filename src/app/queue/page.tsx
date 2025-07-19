@@ -59,9 +59,9 @@ export default function QueuePage() {
     }
 
     const waitTimes = allServiced.map(m =>
-      m.checkInTime && m.services[0]?.startTime ? Math.max(0, differenceInMinutes(new Date(m.services[0].startTime), new Date(m.checkInTime))) : 0
+      (m.services && m.services.length > 0 && m.services[0].startTime) ? Math.max(0, differenceInMinutes(new Date(m.services[0].startTime), new Date(m.checkInTime))) : 0
     );
-    const maxWaitTime = Math.max(...waitTimes);
+    const maxWaitTime = waitTimes.length > 0 ? Math.max(...waitTimes) : 0;
 
     const serviceTimes = allServiced.flatMap(m => m.services).map(s => 
       s.startTime && s.endTime ? Math.max(0, differenceInMinutes(new Date(s.endTime), new Date(s.startTime))) : 0
