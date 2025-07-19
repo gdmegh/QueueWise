@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { QueueMember } from '@/lib/types';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,18 +21,18 @@ const feedbackFormSchema = z.object({
 
 interface FeedbackFormProps {
   member: QueueMember;
+  onSubmitFeedback: (memberId: number, feedback: any) => void;
 }
 
-export function FeedbackForm({ member }: FeedbackFormProps) {
+export function FeedbackForm({ member, onSubmitFeedback }: FeedbackFormProps) {
   const { toast } = useToast();
-  const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
 
   const form = useForm<z.infer<typeof feedbackFormSchema>>({
     resolver: zodResolver(feedbackFormSchema),
   });
 
   const onSubmit = (data: z.infer<typeof feedbackFormSchema>) => {
-    setServiced(prev => prev.map(m => m.id === member.id ? { ...m, feedback: data } : m));
+    onSubmitFeedback(member.id, data);
     toast({
         title: "Feedback Submitted!",
         description: "Thank you for helping us improve our service."
@@ -50,7 +49,7 @@ export function FeedbackForm({ member }: FeedbackFormProps) {
   return (
     <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm mt-4">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2"><Star className="text-primary"/> How was your experience?</CardTitle>
+        <CardTitle className="flex items-center justify-center gap-2"><Star className="text-primary"/> How was your experience?</CardTitle>
         <CardDescription>Your feedback helps us improve.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -61,7 +60,7 @@ export function FeedbackForm({ member }: FeedbackFormProps) {
               name="rating"
               render={({ field }) => (
                 <FormItem className="space-y-3">
-                  <FormLabel>Overall Satisfaction</FormLabel>
+                  <FormLabel className="text-center block">Overall Satisfaction</FormLabel>
                   <FormControl>
                     <RadioGroup
                       onValueChange={field.onChange}
@@ -98,7 +97,7 @@ export function FeedbackForm({ member }: FeedbackFormProps) {
                 </FormItem>
               )}
             />
-            <Button type="submit" className="w-full">
+            <Button type="submit" className="w-full flex items-center gap-2">
               <Send /> Submit Feedback
             </Button>
           </form>

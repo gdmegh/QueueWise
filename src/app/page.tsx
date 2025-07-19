@@ -29,7 +29,7 @@ const createInitialQueue = (): QueueMember[] => {
     const now = new Date();
     return Array.from({ length: 10 }, (_, i) => {
         const checkInTime = new Date(now.getTime() - (10 - i) * 5 * 60000); // Staggered check-in times
-        const service = services[i % services.length];
+        const service = services[i % services.length].subServices[0];
         return {
             id: Date.now() + i,
             ticketNumber: `A-${String(101 + i).padStart(3, '0')}`,
@@ -37,7 +37,7 @@ const createInitialQueue = (): QueueMember[] => {
             phone: `012345678${String(10 + i).padStart(2, '0')}`,
             checkInTime: checkInTime,
             estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * service.avgTime * 60000),
-            status: 'waiting',
+            status: i < 1 ? 'serviced' : 'waiting',
             service: service.name,
             assignedTo: i < 3 ? 2 : undefined, // Assign first 3 to mock staff
         };
@@ -60,11 +60,16 @@ export default function QueuePage() {
   const { toast } = useToast();
 
   const updateAnalytics = useCallback(() => {
-    const totalWaiting = queue.length;
-    const servicedCount = serviced.length;
-    const feedbackReceived = serviced.filter(m => m.feedback).length;
+    const waitingQueue = queue.filter(m => m.status === 'waiting');
+    const servicedQueue = queue.filter(m => m.status === 'serviced');
+    const totalWaiting = waitingQueue.length;
+    const servicedCount = servicedQueue.length;
+    
+    // Include feedback from both the 'serviced' array and the main 'queue' for already-serviced members
+    const feedbackReceived = [...serviced, ...servicedQueue].filter(m => m.feedback).length;
 
-    if (servicedCount === 0) {
+    const allServiced = [...serviced, ...servicedQueue];
+    if (allServiced.length === 0) {
       setAnalytics(prev => ({
         ...prev,
         totalWaiting,
@@ -76,15 +81,15 @@ export default function QueuePage() {
       return;
     }
 
-    const waitTimes = serviced.map(m =>
+    const waitTimes = allServiced.map(m =>
       Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime)))
     );
     const maxWaitTime = Math.max(...waitTimes);
-    const totalServiceTime = serviced.reduce(
+    const totalServiceTime = allServiced.reduce(
       (acc, m) => acc + Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime))),
       0
     );
-    const averageServiceTime = totalServiceTime / servicedCount;
+    const averageServiceTime = totalServiceTime / allServiced.length;
 
     setAnalytics({
       totalWaiting,
@@ -93,7 +98,7 @@ export default function QueuePage() {
       maxWaitTime,
       feedbackReceived,
     });
-  }, [queue.length, serviced]);
+  }, [queue, serviced]);
 
 
   const handleJoinQueue = (data: z.infer<typeof formSchema>) => {
@@ -117,6 +122,19 @@ export default function QueuePage() {
     }
   };
 
+  const handleSetFeedback = (memberId: number, feedback: any) => {
+    setQueue(prevQueue =>
+        prevQueue.map(m =>
+            m.id === memberId ? { ...m, feedback } : m
+        )
+    );
+    setServiced(prevServiced =>
+        prevServiced.map(m =>
+            m.id === memberId ? { ...m, feedback } : m
+        )
+    );
+  };
+
   useEffect(() => {
     updateAnalytics();
   }, [queue, serviced, updateAnalytics]);
@@ -124,11 +142,13 @@ export default function QueuePage() {
   useEffect(() => {
     const simulation = setInterval(() => {
       setQueue(prevQueue => {
-        if (prevQueue.length > 0) {
-          const nextInLine = prevQueue[0];
-          
-          if(prevQueue.length > 1) {
-            const upNext = prevQueue[1];
+        const queueWaiting = prevQueue.filter(m => m.status === 'waiting');
+
+        if (queueWaiting.length > 0) {
+          const nextInLineId = queueWaiting[0].id;
+
+          if (queueWaiting.length > 1) {
+            const upNext = queueWaiting[1];
              toast({
                 title: 'Your turn is next!',
                 description: `${upNext.name}, please get ready. You are next in the queue.`,
@@ -139,23 +159,24 @@ export default function QueuePage() {
                 )
             });
           }
-
-          setServiced(prevServiced => [...prevServiced, { ...nextInLine, status: 'serviced' }]);
-          return prevQueue.slice(1);
+          
+          return prevQueue.map(member => 
+            member.id === nextInLineId ? { ...member, status: 'serviced' } : member
+          );
         }
         return prevQueue;
       });
     }, SIMULATION_INTERVAL_MS);
 
     return () => clearInterval(simulation);
-  }, [toast, setQueue, setServiced]);
+  }, [toast, setQueue]);
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1 space-y-8">
-          <CheckInForm onJoinQueue={handleJoinQueue} isQueueFull={queue.length >= MAX_QUEUE_SIZE}/>
-          <WaitTimeCard queueLength={queue.length} servicedCount={serviced.length} />
+          <CheckInForm onJoinQueue={handleJoinQueue} isQueueFull={queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE}/>
+          <WaitTimeCard queueLength={queue.filter(q => q.status === 'waiting').length} servicedCount={serviced.length + queue.filter(q => q.status === 'serviced').length} />
         </div>
         <div className="lg:col-span-2">
           <Tabs defaultValue="queue" className="w-full">
@@ -164,7 +185,11 @@ export default function QueuePage() {
               <TabsTrigger value="analytics">Analytics</TabsTrigger>
             </TabsList>
             <TabsContent value="queue" className="mt-4">
-              <QueueDisplay queue={queue} onEditService={handleEditService} />
+              <QueueDisplay 
+                queue={queue} 
+                onEditService={handleEditService} 
+                onSetFeedback={handleSetFeedback} 
+              />
             </TabsContent>
             <TabsContent value="analytics" className="mt-4">
               <AnalyticsDashboard analytics={analytics} />

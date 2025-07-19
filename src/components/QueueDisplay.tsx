@@ -13,22 +13,38 @@ import { FeedbackForm } from './FeedbackForm';
 interface QueueDisplayProps {
   queue: QueueMember[];
   onEditService: (memberId: number) => void;
+  onSetFeedback: (memberId: number, feedback: any) => void;
 }
 
-const serviceDetails: { [key: string]: { icon: React.ReactNode; counter: string } } = services.reduce((acc, service) => {
-  const icons: { [key: string]: React.ReactNode } = {
-      'General Inquiry': <List className="h-4 w-4" />,
-      'New Account': <UserPlus className="h-4 w-4" />,
-      'Deposit/Withdrawal': <Banknote className="h-4 w-4" />,
-      'Loan Application': <HandCoins className="h-4 w-4" />,
-      'Pending': <List className="h-4 w-4" />,
-  };
-  acc[service.name] = { icon: icons[service.name] || <List className="h-4 w-4" />, counter: service.counter };
-  return acc;
+const serviceDetails: { [key: string]: { icon: React.ReactNode; counter: string } } = services.flatMap(cat => cat.subServices).reduce((acc, service) => {
+    const icons: { [key: string]: React.ReactNode } = {
+        'General Inquiry': <List className="h-4 w-4" />,
+        'Account Services': <UserPlus className="h-4 w-4" />,
+        'Card Services': <Banknote className="h-4 w-4" />,
+        'Personal Loan': <HandCoins className="h-4 w-4" />,
+        'Mortgage Application': <HandCoins className="h-4 w-4" />,
+        'Loan Payment': <HandCoins className="h-4 w-4" />,
+        'Deposit': <Banknote className="h-4 w-4" />,
+        'Withdrawal': <Banknote className="h-4 w-4" />,
+        'Wire Transfer': <Banknote className="h-4 w-4" />,
+        'Pending': <List className="h-4 w-4" />,
+    };
+
+    const addService = (s: any) => {
+        if (!acc[s.name]) {
+            acc[s.name] = { icon: icons[s.name] || <List className="h-4 w-4" />, counter: s.counter };
+        }
+        if (s.subServices) {
+            s.subServices.forEach(addService);
+        }
+    };
+
+    addService(service);
+    return acc;
 }, {} as { [key: string]: { icon: React.ReactNode; counter: string } });
 
 
-const NowServing: FC<{ member: QueueMember }> = ({ member }) => (
+const NowServing: FC<{ member: QueueMember, onSetFeedback: (memberId: number, feedback: any) => void }> = ({ member, onSetFeedback }) => (
     <Card className="mb-6 bg-gradient-to-r from-accent/20 to-primary/20 border-primary/50">
         <CardHeader>
             <CardTitle className="text-3xl text-primary flex items-center justify-center gap-4">
@@ -39,7 +55,7 @@ const NowServing: FC<{ member: QueueMember }> = ({ member }) => (
             <p className="text-5xl font-bold tracking-wider text-foreground">{member.ticketNumber}</p>
             <p className="text-xl text-muted-foreground mt-2">{member.name}</p>
             <p className="text-2xl font-semibold text-primary mt-4">Please proceed to {serviceDetails[member.service]?.counter || 'Counter'}</p>
-            {member.status === 'serviced' && !member.feedback && <FeedbackForm member={member} />}
+            {member.status === 'serviced' && !member.feedback && <FeedbackForm member={member} onSubmitFeedback={onSetFeedback} />}
             {member.status === 'serviced' && member.feedback && (
                  <div className="mt-4 flex items-center justify-center gap-2 text-green-500">
                     <CheckCircle className="h-5 w-5"/>
@@ -50,9 +66,9 @@ const NowServing: FC<{ member: QueueMember }> = ({ member }) => (
     </Card>
 );
 
-export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService }) => {
-  const nowServing = queue.length > 0 ? queue[0] : null;
-  const upNext = queue.length > 1 ? queue.slice(1) : [];
+export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSetFeedback }) => {
+  const nowServing = queue.find(m => m.status !== 'waiting'); // Could be in-service or serviced
+  const upNext = queue.filter(m => m.status === 'waiting');
 
   return (
      <Card className="h-full bg-card/50">
@@ -61,7 +77,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService }) =>
             <CardDescription>Current waiting list and estimated service times.</CardDescription>
         </CardHeader>
         <CardContent>
-            {nowServing && <NowServing member={nowServing} />}
+            {nowServing && <NowServing member={nowServing} onSetFeedback={onSetFeedback} />}
             {upNext.length > 0 ? (
                 <div className="border rounded-lg overflow-hidden">
                     <Table>
