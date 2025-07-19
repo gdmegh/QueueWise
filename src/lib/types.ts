@@ -57,5 +57,3 @@ export interface CompanySettings {
   logoUrl: string;
   primaryColor: string; // HSL format e.g. "220 14% 10%"
 }
-
-    
