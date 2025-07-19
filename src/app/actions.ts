@@ -2,6 +2,8 @@
 
 import { intelligentWaitTimePrediction, IntelligentWaitTimePredictionOutput } from '@/ai/flows/intelligent-wait-time-prediction';
 import { recommendService, ServiceRecommendationOutput } from '@/ai/flows/service-recommendation';
+import * as db from '@/lib/database';
+import { revalidatePath } from 'next/cache';
 
 export async function getPredictedWaitTime(
   currentQueueLength: number,
@@ -57,8 +59,35 @@ export async function getServiceRecommendation(issueDescription: string): Promis
     console.error("AI service recommendation failed:", error);
     // Fallback to general inquiry
     return {
-      serviceName: 'General Inquiry',
+      serviceName: 'General Physician',
       reasoning: "Could not determine the specific service needed. Please clarify your request at the counter."
     };
+  }
+}
+
+/**
+ * This is an example of a server-side function (a "Server Action").
+ * When you connect a database, you would replace the call to `db.addCompany`
+ * with your MongoDB logic here. This function is secure because it only
+ * runs on the server.
+ */
+export async function createCompanyAction(name: string, plan: 'Enterprise' | 'Business' | 'Trial') {
+  // Database logic would go here.
+  // For now, it calls our abstracted database service.
+  const newCompany = {
+    id: `comp-${Date.now()}`,
+    name: name,
+    plan: plan,
+    status: plan === 'Trial' ? 'trial' : 'active',
+    users: 0,
+  };
+  
+  try {
+    db.addCompany(newCompany);
+    // This tells Next.js to refresh the data on the super-admin page
+    revalidatePath('/super-admin'); 
+    return { success: true, message: 'Company created successfully!' };
+  } catch (e) {
+    return { success: false, message: 'Failed to create company.' };
   }
 }

@@ -18,6 +18,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import * as db from '@/lib/database';
+import { createCompanyAction } from '@/app/actions';
 
 interface Company {
   id: string;
@@ -101,19 +102,16 @@ export default function SuperAdminPage() {
         defaultValues: { name: '', plan: 'Trial' },
     });
 
-    const onAddCompanySubmit = (data: z.infer<typeof addCompanyFormSchema>) => {
-        const newCompany: Company = {
-            id: `comp-${Date.now()}`,
-            name: data.name,
-            plan: data.plan,
-            status: data.plan === 'Trial' ? 'trial' : 'active',
-            users: 0,
-        };
-        db.addCompany(newCompany);
-        refreshData();
-        toast({ title: 'Company Added', description: `${data.name} has been added to the platform.`});
-        setAddModalOpen(false);
-        addCompanyForm.reset();
+    const onAddCompanySubmit = async (data: z.infer<typeof addCompanyFormSchema>) => {
+        const result = await createCompanyAction(data.name, data.plan);
+        if (result.success) {
+            toast({ title: 'Company Added', description: `${data.name} has been added to the platform.`});
+            setAddModalOpen(false);
+            addCompanyForm.reset();
+            refreshData(); // Manually refresh data after action
+        } else {
+            toast({ title: 'Error', description: result.message, variant: 'destructive'});
+        }
     };
 
     const totalUsers = companies.reduce((acc, comp) => acc + (comp.status === 'active' ? comp.users : 0), 0);
@@ -171,7 +169,7 @@ export default function SuperAdminPage() {
                              <CardHeader>
                                 <CardTitle>Subscription Plan Distribution</CardTitle>
                                 <CardDescription>Distribution of active subscription plans.</CardDescription>
-                            </CardHeader>
+                            </Header>
                             <CardContent className="flex items-center justify-center">
                                <ChartContainer config={plansChartConfig} className="h-[250px] w-full aspect-square">
                                     <PieChart>
@@ -221,7 +219,7 @@ export default function SuperAdminPage() {
                                                         <SelectContent>
                                                             <SelectItem value="Trial">Trial</SelectItem>
                                                             <SelectItem value="Business">Business</SelectItem>
-                                                            <SelectItem value="Enterprise">Enterprise</SelectItem>
+                                                            <SelectItem value="Enterprise">Enterprise</ぬいぐるみ>
                                                         </SelectContent>
                                                     </Select>
                                                     <FormMessage />
