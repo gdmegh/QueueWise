@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState }from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { QueueMember, SubService } from '@/lib/types';
 import { WaitTimeCard } from '@/components/WaitTimeCard';
@@ -11,7 +11,7 @@ import { differenceInMinutes } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { services } from '@/lib/services';
 
-const REFRESH_INTERVAL_MS = 15000; // 15 seconds
+const REFRESH_INTERVAL_MS = 5000; // 5 seconds for faster updates
 
 const createInitialQueue = (): QueueMember[] => {
     const now = new Date();
@@ -19,33 +19,25 @@ const createInitialQueue = (): QueueMember[] => {
     
     // Distribute services to create a predictable queue for each counter
     const counterServices: { [key: string]: SubService[] } = {
-        'Counter 1': services[0].subServices.filter(s => s.counter === 'Counter 1' || s.name === 'General Inquiry'),
-        'Counter 2': services[0].subServices.filter(s => s.counter === 'Counter 2'),
-        'Counter 3': services[2].subServices.filter(s => s.counter === 'Counter 3'),
-        'Counter 4': services[1].subServices.filter(s => s.counter === 'Counter 4'),
-        'Counter 5': [services[1].subServices[1]], // Extra mortgage
-        'Counter 6': [services[2].subServices[2]], // Extra wire transfer
+        'Counter 1': services.find(s => s.name === 'Personal Banking')?.subServices.filter(s => s.counter === 'Counter 1' || s.name === 'General Inquiry') || [],
+        'Counter 2': services.find(s => s.name === 'Personal Banking')?.subServices.filter(s => s.counter === 'Counter 2') || [],
+        'Counter 3': services.find(s => s.name === 'Transactions')?.subServices.filter(s => s.counter === 'Counter 3') || [],
+        'Counter 4': services.find(s => s.name === 'Loans & Mortgages')?.subServices.filter(s => s.counter === 'Counter 4') || [],
     };
+    // Ensure counters 5 & 6 have pools for round-robin
+    counterServices['Counter 5'] = counterServices['Counter 2']; 
+    counterServices['Counter 6'] = counterServices['Counter 3'];
 
-    // Make sure all counters have at least one service type to assign
-    if (counterServices['Counter 5'].length === 0) counterServices['Counter 5'] = [services[0].subServices[0]];
-    if (counterServices['Counter 6'].length === 0) counterServices['Counter 6'] = [services[0].subServices[1]];
-
+    const allSubServices = services.flatMap(s => s.subServices);
 
     for (let i = 0; i < 50; i++) {
         const checkInTime = new Date(now.getTime() - (50 - i) * 2 * 60000);
-        const isInService = i < 6;
         
         // Assign customers to counters in a round-robin fashion for a distributed queue
         const counterIndex = (i % 6) + 1;
         const counterName = `Counter ${counterIndex}`;
-        const servicePool = counterServices[counterName];
+        const servicePool = counterServices[counterName].length > 0 ? counterServices[counterName] : allSubServices;
         const assignedService = servicePool[Math.floor(Math.random() * servicePool.length)];
-
-        const memberService = {
-            ...assignedService,
-            counter: isInService ? counterName : assignedService.counter // Assign to specific counter only if in service
-        };
 
         queue.push({
             id: Date.now() + i,
@@ -53,10 +45,10 @@ const createInitialQueue = (): QueueMember[] => {
             name: `Customer ${i + 1}`,
             phone: `012345678${String(10 + i).padStart(2, '0')}`,
             checkInTime: checkInTime,
-            estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * assignedService.avgTime * 60000),
-            status: isInService ? 'in-service' : 'waiting',
-            services: [memberService],
-            assignedTo: isInService ? (i % 4) + 2 : undefined,
+            // Estimate service time based on check-in + avg time. Actual start time will be later.
+            estimatedServiceTime: new Date(checkInTime.getTime() + assignedService.avgTime * 60000),
+            status: 'waiting',
+            services: [assignedService],
         });
     }
     return queue;
@@ -88,7 +80,7 @@ const CounterQueueCard = ({ title, queue, nowServing }: { title: string; queue: 
         let waitTime = 0;
         
         // Time for the person currently being served at this counter
-        if (servingMemberForThisCounter) {
+        if (servingMemberForThisCounter && servingMemberForThisCounter.status === 'in-service' && servingMemberForThisCounter.estimatedServiceTime) {
             waitTime += Math.max(0, differenceInMinutes(new Date(servingMemberForThisCounter.estimatedServiceTime), now));
         }
 
@@ -114,7 +106,7 @@ const CounterQueueCard = ({ title, queue, nowServing }: { title: string; queue: 
                                 <Badge variant="secondary" className="text-lg">{member.ticketNumber}</Badge>
                                 <div className="flex items-center gap-2 text-lg text-muted-foreground">
                                     <Clock className="h-4 w-4" />
-                                    <span>{getWaitTimeForMember(index)} min</span>
+                                    <span>~{getWaitTimeForMember(index)} min</span>
                                 </div>
                             </div>
                         ))
@@ -129,54 +121,65 @@ const CounterQueueCard = ({ title, queue, nowServing }: { title: string; queue: 
 
 
 export default function DisplayPage() {
-    const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', createInitialQueue());
-    const [serviced] = useLocalStorage<QueueMember[]>('serviced', []);
+    const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', createInitialQueue);
+    const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
 
-    // Force a re-render on an interval to pick up local storage changes
+    // Force a re-render on an interval to pick up local storage changes and run simulation
     useEffect(() => {
         const intervalId = setInterval(() => {
+            // This event listener is for other tabs to sync with local storage changes
             window.dispatchEvent(new Event('storage'));
         }, REFRESH_INTERVAL_MS);
         
         const simulation = setInterval(() => {
           setQueue(prevQueue => {
-            const nowServing = prevQueue.filter(m => m.status === 'in-service');
             let newQueue = [...prevQueue];
+            const now = new Date();
 
             // 1. Check if any 'in-service' customers are done
-            const now = new Date();
-            nowServing.forEach(member => {
-                if (new Date(member.estimatedServiceTime) <= now) {
-                    // Move from queue to serviced
-                    newQueue = newQueue.filter(m => m.id !== member.id);
+            const newlyServiced: QueueMember[] = [];
+            newQueue = newQueue.filter(member => {
+                if (member.status === 'in-service' && new Date(member.estimatedServiceTime) <= now) {
+                    newlyServiced.push({ ...member, status: 'serviced' });
+                    return false; // Remove from active queue
                 }
+                return true;
             });
             
+            if (newlyServiced.length > 0) {
+              setServiced(prevServiced => [...prevServiced, ...newlyServiced]);
+            }
+
             // 2. Fill empty counters
-            const servingCounters = newQueue.filter(m => m.status === 'in-service').flatMap(m => m.services.map(s => s.counter));
-            const availableCounters = Array.from({length: 6}, (_, i) => `Counter ${i+1}`).filter(c => !servingCounters.includes(c));
+            const servingCounters = newQueue
+                .filter(m => m.status === 'in-service')
+                .flatMap(m => m.services.map(s => s.counter).filter(Boolean) as string[]);
             
+            const availableCounters = Array.from({length: 6}, (_, i) => `Counter ${i+1}`)
+                .filter(c => !servingCounters.includes(c));
+
             if (availableCounters.length > 0) {
-              const waitingByCounter: {[key: string]: QueueMember[]} = {};
-              newQueue.filter(m => m.status === 'waiting').forEach(m => {
-                  m.services.forEach(s => {
-                    if (!waitingByCounter[s.counter]) waitingByCounter[s.counter] = [];
-                    if (!waitingByCounter[s.counter].find(wm => wm.id === m.id)) {
-                        waitingByCounter[s.counter].push(m);
-                    }
-                  });
-              });
+              const waitingQueue = newQueue
+                .filter(m => m.status === 'waiting')
+                .sort((a,b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
+              
+              const assignedMemberIds = new Set<number>();
 
               availableCounters.forEach(counterName => {
-                  if (waitingByCounter[counterName] && waitingByCounter[counterName].length > 0) {
-                      const nextInLine = waitingByCounter[counterName].sort((a,b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime())[0];
-                      
-                       newQueue = newQueue.map(member => 
+                  const nextInLine = waitingQueue.find(member => 
+                      !assignedMemberIds.has(member.id) &&
+                      member.services.some(s => s.counter === counterName)
+                  );
+                  
+                  if (nextInLine) {
+                      assignedMemberIds.add(nextInLine.id);
+                      newQueue = newQueue.map(member => 
                         member.id === nextInLine.id 
                         ? { 
                             ...member, 
                             status: 'in-service',
-                            services: member.services.map(s => ({...s, counter: counterName})), // Assign to this counter
+                            // Assign actual counter and calculate estimated finish time
+                            services: member.services.map(s => ({...s, counter: counterName})),
                             estimatedServiceTime: new Date(Date.now() + member.services.reduce((acc, s) => acc + s.avgTime, 0) * 60000)
                           } 
                         : member
@@ -187,13 +190,13 @@ export default function DisplayPage() {
             
             return newQueue;
           });
-        }, 10000); // Run simulation every 10 seconds
+        }, 5000); // Run simulation every 5 seconds
 
         return () => {
           clearInterval(intervalId);
           clearInterval(simulation);
         };
-    }, [setQueue]);
+    }, [setQueue, setServiced]);
 
     const nowServing = queue.filter(m => m.status === 'in-service');
     const waitingQueue = queue.filter(m => m.status === 'waiting');
@@ -238,7 +241,7 @@ export default function DisplayPage() {
                         ))}
                     </div>
                      <div className="min-h-[240px]">
-                      <WaitTimeCard queueLength={waitingQueue.length} servicedCount={serviced.length + queue.filter(q => q.status === 'serviced').length} />
+                      <WaitTimeCard queueLength={waitingQueue.length} servicedCount={serviced.length} />
                     </div>
                 </div>
 
@@ -246,8 +249,8 @@ export default function DisplayPage() {
                 <div className="lg:col-span-2 flex flex-col gap-6">
                      <h2 className="text-4xl font-bold text-primary flex items-center gap-3"><Users /> Up Next By Counter</h2>
                     <div className="grid grid-cols-2 grid-rows-3 gap-4 flex-grow">
-                         {counterQueues.map(({ name, queue }) => (
-                            <CounterQueueCard key={name} title={name} queue={queue} nowServing={nowServing} />
+                         {counterQueues.map(({ name, queue: counterQueue }) => (
+                            <CounterQueueCard key={name} title={name} queue={counterQueue} nowServing={nowServing} />
                         ))}
                     </div>
                 </div>
