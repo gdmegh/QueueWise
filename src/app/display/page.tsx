@@ -5,29 +5,30 @@ import { useEffect, useState, useCallback } from 'react';
 import { QueueMember, Service } from '@/lib/types';
 import { WaitTimeCard } from '@/components/queue/WaitTimeCard';
 import { Badge } from '@/components/ui/badge';
-import { Users, Clock, UserCheck, Stethoscope, FlaskConical, Pill, HeartPulse } from 'lucide-react';
+import { Users, Clock, UserCheck, Stethoscope, FlaskConical, Pill, HeartPulse, CheckCircle } from 'lucide-react';
 import * as QueueService from '@/lib/queue-service';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-
-const serviceIcons: { [key: string]: React.ReactNode } = {
-  'Consultation': <Stethoscope className="h-5 w-5" />,
-  'Diagnostics': <FlaskConical className="h-5 w-5" />,
-  'Pharmacy': <Pill className="h-5 w-5" />,
-  'General Check-up': <HeartPulse className="h-5 w-5" />,
-};
+import { services as serviceCategories } from '@/lib/services';
 
 const REFRESH_INTERVAL_MS = 5000;
 
-const NowServingCard = ({ member, service }: { member: QueueMember; service: Service }) => (
-    <div className="bg-primary/20 border-primary/50 rounded-xl p-6 flex flex-col items-center justify-center text-center shadow-lg h-full animate-pulse">
-        <div className="text-xl font-semibold text-primary mb-2">{service.counter}</div>
-        <div className="text-5xl font-extrabold tracking-wider text-white mb-2">
+const ServingTicket = ({ member, service }: { member: QueueMember; service: Service }) => (
+     <div className="bg-primary/20 border-primary/50 rounded-xl p-4 flex flex-col items-center justify-center text-center shadow-lg h-full animate-pulse">
+        <div className="text-4xl font-extrabold tracking-wider text-white mb-2">
             {member.ticketNumber}
         </div>
-        <div className="text-lg text-primary-foreground/80">{member.name}</div>
-        <Badge variant="secondary" className="mt-3">{service.name}</Badge>
+        <div className="text-md text-primary-foreground/80 truncate w-full">{member.name}</div>
     </div>
 );
+
+const AvailableCounter = () => (
+     <div className="bg-muted/50 border-dashed border-2 rounded-xl p-4 flex flex-col items-center justify-center text-center h-full">
+        <CheckCircle className="h-8 w-8 text-green-500 mb-2"/>
+        <div className="text-lg font-semibold text-muted-foreground">
+            Available
+        </div>
+    </div>
+)
 
 const UpNextCard = ({ counter, members }: { counter: string; members: {member: QueueMember, service: Service}[] }) => (
     <Card className="bg-card/50 h-full">
@@ -51,6 +52,20 @@ const UpNextCard = ({ counter, members }: { counter: string; members: {member: Q
     </Card>
 );
 
+const getAllCounters = () => {
+    const counters = new Set<string>();
+    const dive = (services: Service[]) => {
+        for (const service of services) {
+            counters.add(service.counter);
+            if (service.subServices) {
+                dive(service.subServices);
+            }
+        }
+    }
+    dive(serviceCategories.flatMap(c => c.subServices));
+    return Array.from(counters);
+}
+
 export default function DisplayPage() {
     const [queue, setQueue] = useState<QueueMember[]>([]);
     const [servicedCount, setServicedCount] = useState(0);
@@ -73,7 +88,7 @@ export default function DisplayPage() {
     const waitingQueue = queue.filter(m => m.status === 'waiting');
     
     // --- Data processing for the new layout ---
-    const allCounters = Array.from(new Set(queue.flatMap(m => m.services.map(s => s.counter))));
+    const allCounters = getAllCounters();
     
     const nowServingByCounter = allCounters.map(counter => {
         const member = queue.find(m => m.services.some(s => s.counter === counter && s.status === 'in-progress'));
@@ -82,7 +97,7 @@ export default function DisplayPage() {
             return { counter, member, service };
         }
         return { counter, member: null, service: null };
-    }).filter(item => item.member && item.service);
+    });
 
     const upNextByCounter = allCounters.map(counter => {
         const members = queue
@@ -110,19 +125,22 @@ export default function DisplayPage() {
                     
                     <div className="flex-grow">
                         <h2 className="text-4xl font-bold text-primary flex items-center gap-3 mb-4"><UserCheck /> Now Serving</h2>
-                        {nowServingByCounter.length > 0 ? (
-                           <div className="space-y-4">
-                             {nowServingByCounter.map(({ counter, member, service }) => (
-                                <NowServingCard key={counter} member={member!} service={service!} />
-                             ))}
-                           </div>
-                        ) : (
-                            <Card className="bg-card/50 h-full flex items-center justify-center">
-                                <CardContent className="text-center text-muted-foreground p-6">
-                                    <p>All counters are currently available.</p>
-                                </CardContent>
-                            </Card>
-                        )}
+                        <div className="grid grid-cols-2 gap-4">
+                            {nowServingByCounter.map(({ counter, member, service }) => (
+                                <Card key={counter} className="bg-card/50">
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-center text-lg">{counter}</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        {member && service ? (
+                                            <ServingTicket member={member} service={service} />
+                                        ) : (
+                                            <AvailableCounter />
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
                     </div>
                 </div>
 
