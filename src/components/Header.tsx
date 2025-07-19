@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, LayoutDashboard, Ticket, Shield, UserCog } from 'lucide-react';
+import { Users, LayoutDashboard, Ticket, Shield, UserCog, Info } from 'lucide-react';
 import { Button } from './ui/button';
 
 export function Header() {
@@ -15,16 +15,16 @@ export function Header() {
             </h1>
         </Link>
         <nav className="flex items-center gap-2">
-          <Link href="/" passHref>
-            <Button variant="ghost">
-              <LayoutDashboard className="mr-2 h-4 w-4" />
-              Live Queue
-            </Button>
-          </Link>
-          <Link href="/token" passHref>
+           <Link href="/" passHref>
             <Button variant="ghost">
                 <Ticket className="mr-2 h-4 w-4" />
                 Get Token
+            </Button>
+          </Link>
+          <Link href="/live-queue" passHref>
+            <Button variant="ghost">
+              <LayoutDashboard className="mr-2 h-4 w-4" />
+              Live Queue
             </Button>
           </Link>
            <Link href="/staff" passHref>

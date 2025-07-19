@@ -82,7 +82,7 @@ export default function ServicePage() {
       }
     } else {
         toast({ title: "Ticket Number Required", description: "No ticket number provided in the URL.", variant: 'destructive' });
-        router.push('/token');
+        router.push('/');
     }
   }, [ticketNumber, queue, router, toast]);
 
@@ -150,7 +150,7 @@ export default function ServicePage() {
         description: `You are now in the queue.`,
       });
 
-      router.push('/');
+      router.push('/live-queue');
   }
 
   if (!currentMember) {

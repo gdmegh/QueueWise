@@ -1,202 +1,149 @@
-
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { z } from 'zod';
-import { differenceInMinutes } from 'date-fns';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 
-import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
 import { CheckInForm } from '@/components/CheckInForm';
-import { QueueDisplay } from '@/components/QueueDisplay';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WaitTimeCard } from '@/components/WaitTimeCard';
 import type { QueueMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { Bell, Edit } from 'lucide-react';
-import { services } from '@/lib/services';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Ticket } from 'lucide-react';
+import { useLocalStorage } from '@/hooks/use-local-storage';
 
-const formSchema = z.object({
+const checkInFormSchema = z.object({
   phone: z.string().regex(/^\d{11}$/, { message: 'Please enter a valid 11-digit phone number.' }),
 });
 
+const profileFormSchema = z.object({
+  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
+});
+
 const MAX_QUEUE_SIZE = 20;
-const SIMULATION_INTERVAL_MS = 20000; // 20 seconds for simulation
 
-const createInitialQueue = (): QueueMember[] => {
-    const now = new Date();
-    return Array.from({ length: 10 }, (_, i) => {
-        const checkInTime = new Date(now.getTime() - (10 - i) * 5 * 60000); // Staggered check-in times
-        const service = services[i % services.length].subServices[0];
-        return {
-            id: Date.now() + i,
-            ticketNumber: `A-${String(101 + i).padStart(3, '0')}`,
-            name: `Customer ${i + 1}`,
-            phone: `012345678${String(10 + i).padStart(2, '0')}`,
-            checkInTime: checkInTime,
-            estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * service.avgTime * 60000),
-            status: i < 1 ? 'serviced' : 'waiting',
-            services: [service],
-            assignedTo: i < 3 ? 2 : undefined, // Assign first 3 to mock staff
-        };
-    });
-};
-
-
-export default function QueuePage() {
+export default function TokenPage() {
   const router = useRouter();
-  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', createInitialQueue());
-  const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
-  const [analytics, setAnalytics] = useState<AnalyticsData>({
-    totalWaiting: 0,
-    maxWaitTime: 0,
-    averageServiceTime: 0,
-    servicedCount: 0,
-    feedbackReceived: 0,
-  });
-  const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 111);
   const { toast } = useToast();
+  
+  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
+  const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
+  const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 1);
+  const [currentMember, setCurrentMember] = useState<Partial<QueueMember> | null>(null);
+  const [step, setStep] = useState<'getToken' | 'setProfile'>('getToken');
 
-  const updateAnalytics = useCallback(() => {
-    const waitingQueue = queue.filter(m => m.status === 'waiting');
-    const servicedQueue = queue.filter(m => m.status === 'serviced');
-    const totalWaiting = waitingQueue.length;
-    const servicedCount = servicedQueue.length;
-    
-    // Include feedback from both the 'serviced' array and the main 'queue' for already-serviced members
-    const feedbackReceived = [...serviced, ...servicedQueue].filter(m => m.feedback).length;
+  const profileForm = useForm<z.infer<typeof profileFormSchema>>({
+    resolver: zodResolver(profileFormSchema),
+    defaultValues: {
+      name: '',
+    },
+  });
 
-    const allServiced = [...serviced, ...servicedQueue];
-    if (allServiced.length === 0) {
-      setAnalytics(prev => ({
-        ...prev,
-        totalWaiting,
-        servicedCount,
-        averageServiceTime: 0,
-        maxWaitTime: 0,
-        feedbackReceived,
-      }));
+  const handleJoinQueue = (data: z.infer<typeof checkInFormSchema>) => {
+    if (queue.length >= MAX_QUEUE_SIZE) {
+      toast({
+        title: "Queue is full",
+        description: "We're sorry, the queue is currently full. Please try again later.",
+        variant: 'destructive',
+      });
       return;
     }
 
-    const waitTimes = allServiced.map(m =>
-      Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime)))
-    );
-    const maxWaitTime = Math.max(...waitTimes);
-    const totalServiceTime = allServiced.reduce(
-      (acc, m) => acc + Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime))),
-      0
-    );
-    const averageServiceTime = totalServiceTime / allServiced.length;
+    const newMember: Partial<QueueMember> = {
+      id: Date.now(),
+      ticketNumber: `A-${String(ticketCounter).padStart(3, '0')}`,
+      phone: data.phone,
+      checkInTime: new Date(),
+      status: 'waiting',
+      services: [], // Initialize services array
+    };
 
-    setAnalytics({
-      totalWaiting,
-      servicedCount,
-      averageServiceTime,
-      maxWaitTime,
-      feedbackReceived,
+    setTicketCounter(prev => prev + 1);
+    setCurrentMember(newMember);
+    setStep('setProfile');
+
+    toast({
+      title: "You have a token!",
+      description: `Your ticket is ${newMember.ticketNumber}. Please enter your name.`,
     });
-  }, [queue, serviced]);
+  };
 
-
-  const handleJoinQueue = (data: z.infer<typeof formSchema>) => {
-    if (queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE) {
-        toast({
-            title: "Queue is full",
-            description: "We're sorry, the queue is currently full. Please try again later.",
-            variant: 'destructive',
-        });
-        return;
-    }
+  const handleSetProfile = (data: z.infer<typeof profileFormSchema>) => {
+    if (!currentMember) return;
     
-    // Redirect to token page for full flow
-    router.push('/token');
-  };
+    const updatedMember: QueueMember = {
+        ...currentMember,
+        name: data.name,
+        estimatedServiceTime: new Date(), // Placeholder, will be updated
+    } as QueueMember;
 
-  const handleEditService = (memberId: number) => {
-    const member = queue.find(m => m.id === memberId);
-    if (member) {
-      router.push(`/service?ticketNumber=${member.ticketNumber}`);
+    // A temporary member is stored to be picked up by the service page
+    setQueue(prev => [...prev, updatedMember]);
+    
+    // We pass the ticket number to the service selection page.
+    router.push(`/service?ticketNumber=${updatedMember.ticketNumber}`);
+  };
+  
+  const renderStep = () => {
+    switch (step) {
+      case 'getToken':
+        return (
+          <div className="max-w-md mx-auto space-y-8">
+            <div className="text-center">
+              <Ticket className="mx-auto h-12 w-12 text-primary" />
+              <h1 className="text-3xl font-bold tracking-tight text-primary mt-4">Get Your Queue Token</h1>
+              <p className="text-muted-foreground mt-2">Enter your phone number to secure your spot in line.</p>
+            </div>
+            <CheckInForm onJoinQueue={handleJoinQueue} isQueueFull={queue.length >= MAX_QUEUE_SIZE}/>
+            <WaitTimeCard queueLength={queue.length} servicedCount={serviced.length} />
+          </div>
+        );
+      case 'setProfile':
+        return (
+          <div className="max-w-md mx-auto space-y-6">
+            <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
+              <CardHeader>
+                <CardTitle className="text-2xl font-bold text-primary text-center">
+                  Your Ticket: <span className="font-bold text-3xl">{currentMember?.ticketNumber}</span>
+                </CardTitle>
+                 <CardDescription className="text-center">Welcome! Please tell us your name.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Form {...profileForm}>
+                  <form onSubmit={profileForm.handleSubmit(handleSetProfile)} className="space-y-4">
+                    <FormField
+                      control={profileForm.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Full Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Jane Doe" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <Button type="submit" className="w-full">Select Service</Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </div>
+        );
+      default:
+        return null;
     }
-  };
-
-  const handleSetFeedback = (memberId: number, feedback: any) => {
-    setQueue(prevQueue =>
-        prevQueue.map(m =>
-            m.id === memberId ? { ...m, feedback } : m
-        )
-    );
-    setServiced(prevServiced =>
-        prevServiced.map(m =>
-            m.id === memberId ? { ...m, feedback } : m
-        )
-    );
-  };
-
-  useEffect(() => {
-    updateAnalytics();
-  }, [queue, serviced, updateAnalytics]);
-
-  useEffect(() => {
-    const simulation = setInterval(() => {
-      setQueue(prevQueue => {
-        const queueWaiting = prevQueue.filter(m => m.status === 'waiting');
-
-        if (queueWaiting.length > 0) {
-          const nextInLineId = queueWaiting[0].id;
-
-          if (queueWaiting.length > 1) {
-            const upNext = queueWaiting[1];
-             toast({
-                title: 'Your turn is next!',
-                description: `${upNext.name}, please get ready. You are next in the queue.`,
-                action: (
-                   <div className="p-2 rounded-full bg-accent/80">
-                      <Bell className="h-6 w-6 text-accent-foreground" />
-                   </div>
-                )
-            });
-          }
-          
-          return prevQueue.map(member => 
-            member.id === nextInLineId ? { ...member, status: 'serviced' } : member
-          );
-        }
-        return prevQueue;
-      });
-    }, SIMULATION_INTERVAL_MS);
-
-    return () => clearInterval(simulation);
-  }, [toast, setQueue]);
+  }
 
   return (
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        <div className="lg:col-span-1 space-y-8">
-          <CheckInForm onJoinQueue={handleJoinQueue} isQueueFull={queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE}/>
-          <WaitTimeCard queueLength={queue.filter(q => q.status === 'waiting').length} servicedCount={serviced.length + queue.filter(q => q.status === 'serviced').length} />
-        </div>
-        <div className="lg:col-span-2">
-          <Tabs defaultValue="queue" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="queue">Live Queue</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
-            </TabsList>
-            <TabsContent value="queue" className="mt-4">
-              <QueueDisplay 
-                queue={queue} 
-                onEditService={handleEditService} 
-                onSetFeedback={handleSetFeedback} 
-              />
-            </TabsContent>
-            <TabsContent value="analytics" className="mt-4">
-              <AnalyticsDashboard analytics={analytics} />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
+      {renderStep()}
     </main>
   );
 }
