@@ -78,7 +78,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
   return (
      <Card className="h-full bg-card/50">
         <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-headline text-primary"><Users /> Live Patient Queue</CardTitle>
+            <CardTitle className="flex items-center gap-2 font-headline text-primary"><Users /> Live Queue</CardTitle>
             <CardDescription>Current waiting list and estimated service times.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -89,7 +89,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[100px]">Ticket</TableHead>
-                                <TableHead>Patient Name</TableHead>
+                                <TableHead>Name</TableHead>
                                 <TableHead>Services</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
                             </TableRow>

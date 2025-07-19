@@ -21,7 +21,7 @@ import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
 
 // Mock current staff user - in a real app, this would come from an auth context
-const MOCK_CURRENT_STAFF: User = { id: 2, name: 'John Staff', role: 'staff' };
+const MOCK_CURRENT_STAFF: User = { id: 2, name: 'Dr. John Smith', role: 'staff' };
 
 const resolveFormSchema = z.object({
   notes: z.string().min(1, 'Service notes cannot be empty.'),
@@ -117,20 +117,20 @@ export default function StaffPage() {
           <CardTitle className="flex items-center gap-2 text-2xl text-primary">
             <UserCog /> Staff Panel
           </CardTitle>
-          <CardDescription>Hi Mr. {staffLastName}, manage your assigned queue and tasks.</CardDescription>
+          <CardDescription>Hi {MOCK_CURRENT_STAFF.name}, manage your assigned queue and tasks.</CardDescription>
         </CardHeader>
         <CardContent className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-2">
                 <Card>
                     <CardHeader>
-                        <CardTitle className="flex items-center gap-2"><Users/> Customer Queue</CardTitle>
+                        <CardTitle className="flex items-center gap-2"><Users/> Patient Queue</CardTitle>
                     </CardHeader>
                     <CardContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Ticket</TableHead>
-                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Patient</TableHead>
                                     <TableHead>Services</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
@@ -251,7 +251,7 @@ export default function StaffPage() {
                         <FormItem>
                             <FormLabel>Service Notes</FormLabel>
                             <FormControl>
-                                <Textarea placeholder="e.g., Customer opened a new checking account. All documents signed." {...field} rows={4}/>
+                                <Textarea placeholder="e.g., Patient consulted for flu symptoms. Prescription provided." {...field} rows={4}/>
                             </FormControl>
                             <FormMessage />
                         </FormItem>

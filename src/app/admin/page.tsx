@@ -56,9 +56,9 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const [companySettings, setCompanySettings] = useLocalStorage<CompanySettings>('companySettings', {
-    name: 'Shafa Clinic Kabul',
+    name: 'GD Clinic',
     logoUrl: '/assets/logo.svg', // Standardized path
-    primaryColor: '217 91% 60%',
+    primaryColor: '38 92% 50%',
   });
 
   const staffForm = useForm<z.infer<typeof staffFormSchema>>({
@@ -109,7 +109,7 @@ export default function AdminPage() {
   const onSettingsSubmit = (data: z.infer<typeof companySettingsSchema>) => {
     setCompanySettings(data);
     // This is a simple way to apply the theme. A more robust solution might involve a theme provider context.
-    document.documentElement.style.setProperty('--primary', data.primaryColor);
+    document.documentElement.style.setProperty('--primary', data.primaryColor.replace(/\s/g, ' '));
     alert('Settings saved! The primary color has been updated.');
   };
 
@@ -164,7 +164,7 @@ export default function AdminPage() {
           <CardTitle className="flex items-center gap-2 text-2xl text-primary">
             <Shield /> Admin Dashboard
           </CardTitle>
-          <CardDescription>Manage staff, shifts, and system settings for {companySettings.name}.</CardDescription>
+          <CardDescription>Manage staff, shifts, and system settings.</CardDescription>
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="dashboard">

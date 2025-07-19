@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -38,8 +39,6 @@ export default function CheckInPage() {
       const member = queue.find(m => m.ticketNumber === ticketNumber);
       if (member) {
         setCurrentMember(member);
-        // If the user is a guest and already has a name, they might be editing.
-        // Otherwise, if they're a registered user, pre-fill their name.
         profileForm.setValue('name', member.name === 'Guest User' ? '' : member.name);
       } else {
         toast({ title: "Invalid Ticket", description: "Could not find a user with that ticket number.", variant: 'destructive' });
@@ -79,9 +78,9 @@ export default function CheckInPage() {
             <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
                 <CardHeader>
                 <CardTitle className="text-2xl font-bold text-primary text-center">
-                    Tell Us Your Name
+                    Enter Your Name
                 </CardTitle>
-                    <CardDescription className="text-center">Please provide your name to continue.</CardDescription>
+                    <CardDescription className="text-center">Please provide your name to continue your check-in.</CardDescription>
                 </CardHeader>
                 <CardContent>
                 <Form {...profileForm}>

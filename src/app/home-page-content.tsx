@@ -66,7 +66,7 @@ export default function HomePageContent() {
       checkInTime: new Date(),
       status: 'waiting',
       services: [],
-      name: 'Guest Patient', // Default name for guests
+      name: 'Guest User', // Default name for guests
       estimatedServiceTime: new Date(), // Placeholder
     };
 
@@ -90,8 +90,8 @@ export default function HomePageContent() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
             <Ticket className="mx-auto h-12 w-12 text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight text-primary mt-4">Welcome to HealthQueue</h1>
-            <p className="text-muted-foreground mt-2">Your smart clinic queueing solution.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-primary mt-4">Welcome to GD Clinic</h1>
+            <p className="text-muted-foreground mt-2">Your health is our priority. Please check in to begin.</p>
         </div>
 
         <Tabs defaultValue="guest" className="w-full">

@@ -55,7 +55,7 @@ export default function ServicePage() {
         setCurrentMember(member);
         setSelectedServices(member.services || []);
       } else {
-        toast({ title: "Invalid Ticket", description: "Could not find a patient with that ticket number.", variant: 'destructive' });
+        toast({ title: "Invalid Ticket", description: "Could not find a user with that ticket number.", variant: 'destructive' });
         router.push('/');
       }
     } else {
