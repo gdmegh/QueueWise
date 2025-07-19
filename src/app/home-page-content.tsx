@@ -9,7 +9,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 
 import { CheckInForm } from '@/components/forms/CheckInForm';
 import { WaitTimeCard } from '@/components/queue/WaitTimeCard';
-import { QueueDisplay } from '@/components/queue/QueueDisplay';
 import type { QueueMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -21,6 +20,7 @@ import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as QueueService from '@/lib/queue-service';
 import { Badge } from '@/components/ui/badge';
+import { NowServingCard } from '@/components/queue/NowServingCard';
 
 const checkInFormSchema = z.object({
   phone: z.string().regex(/^\d{10,15}$/, { message: 'Please enter a valid phone number.' }),
@@ -116,38 +116,8 @@ export default function HomePageContent() {
     router.push('/account');
   };
   
-  const handleEditService = (memberId: number) => {
-    const member = queue.find(m => m.id === memberId);
-    if (member) {
-      router.push(`/service?ticketNumber=${member.ticketNumber}`);
-    }
-  };
-
-  const handleSetFeedback = (memberId: number, feedback: any) => {
-    const allMembers = [...QueueService.getQueue(), ...QueueService.getServiced()];
-    const member = allMembers.find(m => m.id === memberId);
-    
-    if (member) {
-        member.feedback = feedback;
-        
-        let queueList = QueueService.getQueue();
-        const queueIndex = queueList.findIndex(q => q.id === memberId);
-        if (queueIndex > -1) {
-            queueList[queueIndex] = member;
-            QueueService.updateQueue(queueList);
-        }
-
-        let servicedList = QueueService.getServiced();
-        const servicedIndex = servicedList.findIndex(s => s.id === memberId);
-        if (servicedIndex > -1) {
-            const newServicedList = servicedList.map(s => s.id === memberId ? member : s);
-            localStorage.setItem('serviced', JSON.stringify(newServicedList));
-        }
-    }
-    refreshData();
-  };
-
   const waitingQueue = queue.filter(q => q.status === 'waiting');
+  const nowServing = queue.filter(q => q.status === 'in-service' || q.status === 'serviced');
   const servicedToday = serviced.length + queue.filter(q => q.status === 'serviced').length;
   const nextInLine = waitingQueue.length > 0 ? waitingQueue[0] : null;
 
@@ -218,14 +188,9 @@ export default function HomePageContent() {
             </div>
         </div>
         
-        {/* Queue Display Section */}
+        {/* Now Serving Section */}
         <div>
-             <QueueDisplay 
-                queue={queue} 
-                onEditService={handleEditService} 
-                onSetFeedback={handleSetFeedback} 
-                isPublicView={true}
-              />
+             <NowServingCard nowServing={nowServing} />
         </div>
 
         {/* Upcoming Tokens Section */}
