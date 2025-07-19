@@ -8,9 +8,9 @@ import Image from 'next/image';
 
 export function Header() {
   const [companySettings] = useLocalStorage<CompanySettings>('companySettings', {
-    name: 'QueueWise',
+    name: 'GD Clinic',
     logoUrl: '/assets/logo.svg', // Standardized path
-    primaryColor: '217 91% 60%',
+    primaryColor: '38 92% 50%',
   });
 
   return (
