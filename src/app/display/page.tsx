@@ -129,7 +129,7 @@ export default function DisplayPage() {
                 {/* Right Section: Up Next by Counter */}
                 <div className="col-span-12 lg:col-span-8">
                     <h2 className="text-4xl font-bold text-primary flex items-center gap-3 mb-4"><Users /> Up Next</h2>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-6 h-[calc(100%-4rem)]">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 h-[calc(100%-4rem)]">
                         {upNextByCounter.map(({ counter, members }) => (
                             <UpNextCard key={counter} counter={counter} members={members} />
                         ))}
