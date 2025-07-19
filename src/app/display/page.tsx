@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { QueueMember } from '@/lib/types';
-import { WaitTimeCard } from '@/components/WaitTimeCard';
+import { WaitTimeCard } from '@/components/queue/WaitTimeCard';
 import { Badge } from '@/components/ui/badge';
 import { Users, Clock, UserCheck } from 'lucide-react';
 import { differenceInMinutes } from 'date-fns';
