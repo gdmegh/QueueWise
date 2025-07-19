@@ -1,8 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useState, useEffect } from 'react';
 import { User, Shift, QueueMember, ShiftChangeRequest, CompanySettings } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,6 +19,7 @@ import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
 import { differenceInMinutes, format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
+import * as db from '@/lib/database';
 
 // Mock current user - in a real app, this would come from an auth context
 const MOCK_CURRENT_USER: User = { id: 1, name: 'Admin User', role: 'admin' };
@@ -38,28 +38,15 @@ const companySettingsSchema = z.object({
 
 
 export default function AdminPage() {
-  const [users, setUsers] = useLocalStorage<User[]>('users', [
-    MOCK_CURRENT_USER,
-    { id: 2, name: 'Dr. John Smith', role: 'staff' },
-    { id: 3, name: 'Nurse Jane', role: 'supervisor' },
-    { id: 4, name: 'Emily Clerk', role: 'staff' },
-  ]);
-  const [shifts, setShifts] = useLocalStorage<Shift[]>('shifts', [
-    { id: 1, userId: 2, start: new Date('2024-08-01T09:00:00'), end: new Date('2024-08-01T17:00:00')},
-    { id: 2, userId: 3, start: new Date('2024-08-01T10:00:00'), end: new Date('2024-08-01T18:00:00')},
-    { id: 3, userId: 4, start: new Date('2024-08-01T09:00:00'), end: new Date('2024-08-01T17:00:00')},
-  ]);
-  const [shiftRequests, setShiftRequests] = useLocalStorage<ShiftChangeRequest[]>('shiftRequests', []);
-  const [queue] = useLocalStorage<QueueMember[]>('queue', []);
-  const [serviced] = useLocalStorage<QueueMember[]>('serviced', []);
+  const [users, setUsers] = useState<User[]>([]);
+  const [shifts, setShifts] = useState<Shift[]>([]);
+  const [shiftRequests, setShiftRequests] = useState<ShiftChangeRequest[]>([]);
+  const [queue, setQueue] = useState<QueueMember[]>([]);
+  const [serviced, setServiced] = useState<QueueMember[]>([]);
+  const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: '', logoUrl: '', primaryColor: '' });
+  
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-
-  const [companySettings, setCompanySettings] = useLocalStorage<CompanySettings>('companySettings', {
-    name: 'GD Clinic',
-    logoUrl: '/assets/logo.svg', // Standardized path
-    primaryColor: '38 92% 50%',
-  });
 
   const staffForm = useForm<z.infer<typeof staffFormSchema>>({
     resolver: zodResolver(staffFormSchema),
@@ -67,8 +54,28 @@ export default function AdminPage() {
 
   const settingsForm = useForm<z.infer<typeof companySettingsSchema>>({
     resolver: zodResolver(companySettingsSchema),
-    defaultValues: companySettings,
   });
+  
+  const refreshData = () => {
+    setUsers(db.getUsers());
+    setShifts(db.getData<Shift[]>('shifts'));
+    setShiftRequests(db.getData<ShiftChangeRequest[]>('shiftRequests'));
+    setQueue(db.getData<QueueMember[]>('queue'));
+    setServiced(db.getData<QueueMember[]>('serviced'));
+    const settings = db.getCompanySettings();
+    setCompanySettings(settings);
+    settingsForm.reset(settings);
+  };
+
+  useEffect(() => {
+    refreshData();
+  }, []);
+  
+  useEffect(() => {
+    if (companySettings.primaryColor) {
+        document.documentElement.style.setProperty('--primary', companySettings.primaryColor.replace(/\s/g, ' '));
+    }
+  }, [companySettings.primaryColor]);
 
   const hasPermission = (permission: 'manageStaff' | 'manageShifts' | 'manageRequests' | 'manageSettings') => {
     if (MOCK_CURRENT_USER.role === 'admin') return true;
@@ -93,43 +100,37 @@ export default function AdminPage() {
         alert("Cannot delete the current user.");
         return;
     }
-    setUsers(users.filter(u => u.id !== userId));
+    db.deleteUser(userId);
+    refreshData();
   }
 
   const onStaffSubmit = (data: z.infer<typeof staffFormSchema>) => {
     if (editingUser) {
-      setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...data } : u));
+      db.updateUser({ ...editingUser, ...data });
     } else {
-      const newUser: User = { ...data, id: Date.now() };
-      setUsers([...users, newUser]);
+      db.addUser({ ...data, id: Date.now() });
     }
+    refreshData();
     setIsFormOpen(false);
   }
 
   const onSettingsSubmit = (data: z.infer<typeof companySettingsSchema>) => {
-    setCompanySettings(data);
-    // This is a simple way to apply the theme. A more robust solution might involve a theme provider context.
-    document.documentElement.style.setProperty('--primary', data.primaryColor.replace(/\s/g, ' '));
+    db.setCompanySettings(data);
+    refreshData();
     alert('Settings saved! The primary color has been updated.');
   };
 
   const handleRequestAction = (requestId: number, status: 'approved' | 'denied') => {
-    setShiftRequests(prev => prev.map(req => 
-      req.id === requestId ? { ...req, status } : req
-    ));
-    if (status === 'approved') {
-        const request = shiftRequests.find(req => req.id === requestId);
-        if (request) {
-            // This is a simplified logic. A real app might update existing shifts or add new ones.
-            const newShift: Shift = {
-                id: Date.now(),
-                userId: request.userId,
-                start: new Date(request.requestedStart),
-                end: new Date(request.requestedEnd),
-            };
-            setShifts(prev => [...prev, newShift]);
-        }
+    const request = db.updateShiftRequestStatus(requestId, status);
+    if (status === 'approved' && request) {
+      db.addShift({
+        id: Date.now(),
+        userId: request.userId,
+        start: new Date(request.requestedStart),
+        end: new Date(request.requestedEnd),
+      });
     }
+    refreshData();
   };
 
   const getAnalyticsData = () => {
@@ -143,14 +144,15 @@ export default function AdminPage() {
       }
 
       const waitTimes = allServiced.map(m =>
-        Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime)))
+        m.checkInTime && m.services[0]?.startTime ? Math.max(0, differenceInMinutes(new Date(m.services[0].startTime), new Date(m.checkInTime))) : 0
       );
       const maxWaitTime = Math.max(...waitTimes);
-      const totalServiceTime = allServiced.reduce(
-        (acc, m) => acc + Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime))),
-        0
+
+      const serviceTimes = allServiced.flatMap(m => m.services).map(s => 
+        s.startTime && s.endTime ? Math.max(0, differenceInMinutes(new Date(s.endTime), new Date(s.startTime))) : 0
       );
-      const averageServiceTime = totalServiceTime / servicedCount;
+      const totalServiceTime = serviceTimes.reduce((acc, time) => acc + time, 0);
+      const averageServiceTime = serviceTimes.length > 0 ? totalServiceTime / serviceTimes.length : 0;
 
       return { totalWaiting, servicedCount, averageServiceTime, maxWaitTime, feedbackReceived };
   }

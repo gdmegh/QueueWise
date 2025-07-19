@@ -1,17 +1,20 @@
 
+'use client';
+
 import Link from 'next/link';
 import { Users, LayoutDashboard, Monitor, Shield, UserCog, UserCircle, Crown } from 'lucide-react';
 import { Button } from './ui/button';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { CompanySettings } from '@/lib/types';
 import Image from 'next/image';
+import { useState, useEffect } from 'react';
+import * as db from '@/lib/database';
 
 export function Header() {
-  const [companySettings] = useLocalStorage<CompanySettings>('companySettings', {
-    name: 'GD Clinic',
-    logoUrl: '/assets/logo.svg', // Standardized path
-    primaryColor: '38 92% 50%',
-  });
+  const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: '', logoUrl: '', primaryColor: '' });
+
+  useEffect(() => {
+    setCompanySettings(db.getCompanySettings());
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 w-full py-3 px-4 sm:px-6 lg:px-8 border-b border-white/10 bg-background/80 backdrop-blur-sm">

@@ -3,7 +3,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import type { QueueMember } from '@/lib/types';
 import { services as serviceCategories, SubService, ServiceCategory } from '@/lib/services';
 
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, ArrowRight, Trash2, Pill, List, ArrowLeft, Stethoscope, HeartPulse, FlaskConical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import * as db from '@/lib/database';
 
 const serviceIcons: { [key: string]: React.ReactNode } = {
   'Consultation': <Stethoscope className="h-8 w-8" />,
@@ -38,7 +38,7 @@ export default function ServicePage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
+  const [queue, setQueue] = useState<QueueMember[]>([]);
   const [currentMember, setCurrentMember] = useState<QueueMember | null>(null);
   const [selectedServices, setSelectedServices] = useState<SubService[]>([]);
   const ticketNumber = searchParams.get('ticketNumber');
@@ -50,8 +50,10 @@ export default function ServicePage() {
   
   useEffect(() => {
     if (ticketNumber) {
-      const member = queue.find(m => m.ticketNumber === ticketNumber);
+      const currentQueue = db.getData<QueueMember[]>('queue');
+      const member = currentQueue.find(m => m.ticketNumber === ticketNumber);
       if (member) {
+        setQueue(currentQueue);
         setCurrentMember(member);
         setSelectedServices(member.services || []);
       } else {
@@ -62,7 +64,7 @@ export default function ServicePage() {
         toast({ title: "Ticket Number Required", description: "No ticket number provided in the URL.", variant: 'destructive' });
         router.push('/');
     }
-  }, [ticketNumber, queue, router, toast]);
+  }, [ticketNumber, router, toast]);
 
   const handleCategorySelect = (category: ServiceCategory) => {
     setSelectedCategory(category);
@@ -121,31 +123,13 @@ export default function ServicePage() {
         return;
       }
       
-      const totalAvgTime = selectedServices.reduce((acc, s) => acc + s.avgTime, 0);
+      const updatedMember = {
+          ...currentMember,
+          services: selectedServices.map(s => ({ ...s, status: 'pending' })),
+      };
 
-      setQueue(prevQueue => {
-        const userIndex = prevQueue.findIndex(m => m.id === currentMember.id);
-        
-        const lastPersonInQueue = prevQueue[prevQueue.length - 1];
-        const estimatedServiceTime = new Date(
-            (lastPersonInQueue ? new Date(lastPersonInQueue.estimatedServiceTime).getTime() : Date.now()) +
-            totalAvgTime * 60000
-        );
-          
-        const updatedMember = {
-            ...currentMember,
-            services: selectedServices,
-            estimatedServiceTime,
-        };
-
-        if(userIndex > -1) {
-            const newQueue = [...prevQueue];
-            newQueue[userIndex] = updatedMember;
-            return newQueue;
-        } else {
-            return [...prevQueue, updatedMember];
-        }
-      });
+      const updatedQueue = queue.map(m => m.id === currentMember.id ? updatedMember : m);
+      db.setData('queue', updatedQueue);
 
       toast({
         title: "Services Confirmed!",

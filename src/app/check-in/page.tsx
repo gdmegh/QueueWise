@@ -12,9 +12,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import type { QueueMember } from '@/lib/types';
 import { Loader2 } from 'lucide-react';
+import * as db from '@/lib/database';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -25,7 +25,7 @@ export default function CheckInPage() {
   const searchParams = useSearchParams();
   const { toast } = useToast();
   
-  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
+  const [queue, setQueue] = useState<QueueMember[]>([]);
   const [currentMember, setCurrentMember] = useState<QueueMember | null>(null);
   const ticketNumber = searchParams.get('ticketNumber');
   
@@ -33,10 +33,13 @@ export default function CheckInPage() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: { name: '' },
   });
-
+  
   useEffect(() => {
+    const currentQueue = db.getData<QueueMember[]>('queue');
+    setQueue(currentQueue);
+
     if (ticketNumber) {
-      const member = queue.find(m => m.ticketNumber === ticketNumber);
+      const member = currentQueue.find(m => m.ticketNumber === ticketNumber);
       if (member) {
         setCurrentMember(member);
         profileForm.setValue('name', member.name === 'Guest User' ? '' : member.name);
@@ -47,14 +50,15 @@ export default function CheckInPage() {
     } else {
       router.push('/'); // No ticket, no business here.
     }
-  }, [ticketNumber, queue, router, toast, profileForm]);
+  }, [ticketNumber, router, toast, profileForm]);
 
   const handleSetProfile = (data: z.infer<typeof profileFormSchema>) => {
     if (!currentMember) return;
 
-    setQueue(prevQueue => prevQueue.map(m => 
+    const updatedQueue = queue.map(m => 
       m.id === currentMember.id ? { ...m, name: data.name } : m
-    ));
+    );
+    db.setData('queue', updatedQueue);
     
     toast({
       title: `Welcome, ${data.name}!`,

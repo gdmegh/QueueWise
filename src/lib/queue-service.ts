@@ -1,22 +1,11 @@
+
 // NOTE: This service uses localStorage for simplicity in this prototype.
 // In a real production application, this would be replaced with a proper
 // database like Firestore, and these functions would become API calls.
 
 import { QueueMember, Service } from "./types";
 import { services } from "./services";
-
-const getLocalStorage = <T>(key: string, defaultValue: T): T => {
-    if (typeof window === 'undefined') return defaultValue;
-    const value = window.localStorage.getItem(key);
-    return value ? JSON.parse(value) : defaultValue;
-}
-
-const setLocalStorage = <T>(key: string, value: T) => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(key, JSON.stringify(value));
-}
-
-// --- Public API for the Queue Service ---
+import * as db from './database';
 
 /**
  * Creates an initial queue with sample data.
@@ -67,7 +56,7 @@ export const createInitialQueue = (): QueueMember[] => {
             services: assignedServices,
         });
     }
-    setLocalStorage('queue', queue);
+    db.updateQueue(queue);
     return queue;
 };
 
@@ -76,7 +65,7 @@ export const createInitialQueue = (): QueueMember[] => {
  * Fetches the entire current queue.
  */
 export const getQueue = (): QueueMember[] => {
-    let queue = getLocalStorage<QueueMember[]>('queue', []);
+    let queue = db.getQueue();
     if (queue.length === 0) {
         queue = createInitialQueue();
     }
@@ -87,7 +76,7 @@ export const getQueue = (): QueueMember[] => {
  * Fetches all serviced members.
  */
 export const getServiced = (): QueueMember[] => {
-    return getLocalStorage<QueueMember[]>('serviced', []);
+    return db.getServiced();
 }
 
 /**
@@ -95,7 +84,7 @@ export const getServiced = (): QueueMember[] => {
  * @param queue The new queue array.
  */
 export const updateQueue = (queue: QueueMember[]): void => {
-    setLocalStorage('queue', queue);
+    db.updateQueue(queue);
 }
 
 /**
@@ -103,8 +92,7 @@ export const updateQueue = (queue: QueueMember[]): void => {
  * @param members The members to add.
  */
 export const addAllToServiced = (members: QueueMember[]): void => {
-    const currentServiced = getServiced();
-    setLocalStorage('serviced', [...currentServiced, ...members]);
+    db.addAllToServiced(members);
 }
 
 /**

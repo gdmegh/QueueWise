@@ -16,15 +16,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Ticket, LogIn, Clock } from 'lucide-react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as QueueService from '@/lib/queue-service';
 import { Badge } from '@/components/ui/badge';
 import { NowServingCard } from '@/components/queue/NowServingCard';
-
-const checkInFormSchema = z.object({
-  phone: z.string().regex(/^\d{10,15}$/, { message: 'Please enter a valid phone number.' }),
-});
+import * as db from '@/lib/database';
 
 const loginFormSchema = z.object({
   email: z.string().email("Please enter a valid email address."),
@@ -40,14 +36,8 @@ export default function HomePageContent() {
   const router = useRouter();
   const { toast } = useToast();
   
-  const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 111);
   const [queue, setQueue] = useState<QueueMember[]>([]);
   const [serviced, setServiced] = useState<QueueMember[]>([]);
-
-  const checkInForm = useForm<z.infer<typeof checkInFormSchema>>({
-    resolver: zodResolver(checkInFormSchema),
-    defaultValues: { phone: '' },
-  });
 
   const loginForm = useForm<z.infer<typeof loginFormSchema>>({
     resolver: zodResolver(loginFormSchema),
@@ -76,7 +66,7 @@ export default function HomePageContent() {
   }, [refreshData]);
 
 
-  const handleJoinQueueAsGuest = (data: z.infer<typeof checkInFormSchema>) => {
+  const handleJoinQueueAsGuest = (phone: string) => {
     const currentQueue = QueueService.getQueue();
     if (currentQueue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE) {
       toast({
@@ -86,19 +76,20 @@ export default function HomePageContent() {
       });
       return;
     }
+    
+    const ticketCounter = db.getData<number>('ticketCounter');
 
     const newMember: QueueMember = {
       id: Date.now(),
       ticketNumber: `A-${String(ticketCounter).padStart(3, '0')}`,
-      phone: data.phone,
+      phone: phone,
       checkInTime: new Date(),
       status: 'waiting',
       services: [],
       name: 'Guest User', // Default name for guests
-      estimatedServiceTime: new Date(), // Placeholder
     };
 
-    setTicketCounter(prev => prev + 1);
+    db.setData('ticketCounter', ticketCounter + 1);
     
     const updatedQueue = [...currentQueue, newMember];
     QueueService.updateQueue(updatedQueue);

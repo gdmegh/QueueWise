@@ -1,16 +1,17 @@
+
 'use client';
 
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useState, useEffect } from 'react';
 import { QueueMember } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserCircle, Ticket, Clock, CheckCircle } from 'lucide-react';
+import { UserCircle, Ticket, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
-
+import * as db from '@/lib/database';
 
 // Mock logged-in user data - in a real app this would come from an auth context
 const MOCK_REGISTERED_USER = {
@@ -24,15 +25,19 @@ const MAX_QUEUE_SIZE = 20;
 export default function AccountPage() {
     const router = useRouter();
     const { toast } = useToast();
-    const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
-    const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
-    const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 111);
+    const [userHistory, setUserHistory] = useState<QueueMember[]>([]);
+    const [queue, setQueue] = useState<QueueMember[]>([]);
 
-    // Filter history for the mock user
-    const userHistory = serviced.filter(item => item.phone === MOCK_REGISTERED_USER.phone);
+    useEffect(() => {
+        const serviced = db.getData<QueueMember[]>('serviced');
+        const currentQueue = db.getData<QueueMember[]>('queue');
+        setUserHistory(serviced.filter(item => item.phone === MOCK_REGISTERED_USER.phone));
+        setQueue(currentQueue);
+    }, []);
 
     const handleNewCheckin = () => {
-        if (queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE) {
+        const waitingQueue = queue.filter(q => q.status === 'waiting').length;
+        if (waitingQueue >= MAX_QUEUE_SIZE) {
             toast({
                 title: "Queue is full",
                 description: "We're sorry, the queue is currently full. Please try again later.",
@@ -41,6 +46,8 @@ export default function AccountPage() {
             return;
         }
 
+        const ticketCounter = db.getData<number>('ticketCounter');
+        
         const newMember: QueueMember = {
             id: Date.now(),
             ticketNumber: `A-${String(ticketCounter).padStart(3, '0')}`,
@@ -49,11 +56,12 @@ export default function AccountPage() {
             checkInTime: new Date(),
             status: 'waiting',
             services: [],
-            estimatedServiceTime: new Date(), // Placeholder
         };
-
-        setTicketCounter(prev => prev + 1);
-        setQueue(prev => [...prev, newMember]);
+        
+        db.setData('ticketCounter', ticketCounter + 1);
+        const newQueue = [...queue, newMember];
+        db.setData('queue', newQueue);
+        setQueue(newQueue);
         
         toast({
             title: `Welcome back, ${newMember.name}!`,

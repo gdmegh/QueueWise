@@ -1,10 +1,8 @@
 
 'use client';
 
-import { useState } from 'react';
-import { useLocalStorage } from '@/hooks/use-local-storage';
+import { useState, useEffect } from 'react';
 import { User, Shift, QueueMember, ShiftChangeRequest } from '@/lib/types';
-import { services } from '@/lib/services';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,11 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserCog, Users, CalendarOff, Check, Send, ArrowRightLeft, Loader2, List } from 'lucide-react';
+import { UserCog, Users, CalendarOff, Check, Send, ArrowRightLeft, Loader2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import * as db from '@/lib/database';
 
 // Mock current staff user - in a real app, this would come from an auth context
 const MOCK_CURRENT_STAFF: User = { id: 2, name: 'Dr. John Smith', role: 'staff' };
@@ -40,15 +39,22 @@ const shiftRequestFormSchema = z.object({
 });
 
 export default function StaffPage() {
-  const [users, setUsers] = useLocalStorage<User[]>('users', []);
-  const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
-  const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
-  const [shiftRequests, setShiftRequests] = useLocalStorage<ShiftChangeRequest[]>('shiftRequests', []);
+  const [users, setUsers] = useState<User[]>([]);
+  const [queue, setQueue] = useState<QueueMember[]>([]);
   const [activeToken, setActiveToken] = useState<QueueMember | null>(null);
   const [isResolveModalOpen, setResolveModalOpen] = useState(false);
   const [isTransferModalOpen, setTransferModalOpen] = useState(false);
   const [isShiftRequestModalOpen, setShiftRequestModalOpen] = useState(false);
   const { toast } = useToast();
+  
+  const refreshData = () => {
+    setUsers(db.getUsers());
+    setQueue(db.getData<QueueMember[]>('queue'));
+  };
+
+  useEffect(() => {
+    refreshData();
+  }, []);
 
   const myQueue = queue.filter(m => m.assignedTo === MOCK_CURRENT_STAFF.id || !m.assignedTo); // For demo, staff sees unassigned too
   const otherStaff = users.filter(u => u.role !== 'admin' && u.id !== MOCK_CURRENT_STAFF.id);
@@ -65,13 +71,8 @@ export default function StaffPage() {
 
   const onResolveSubmit = (data: z.infer<typeof resolveFormSchema>) => {
     if (!activeToken) return;
-    const resolvedMember: QueueMember = {
-      ...activeToken,
-      status: 'serviced',
-      serviceNotes: data.notes,
-    };
-    setServiced(prev => [...prev, resolvedMember]);
-    setQueue(prev => prev.filter(m => m.id !== activeToken.id));
+    db.resolveQueueMember(activeToken.id, data.notes);
+    refreshData();
     setResolveModalOpen(false);
     toast({ title: "Token Resolved", description: `Token ${activeToken.ticketNumber} marked as complete.` });
   };
@@ -85,7 +86,8 @@ export default function StaffPage() {
   const onTransferSubmit = (data: z.infer<typeof transferFormSchema>) => {
     if (!activeToken) return;
     const targetStaffId = parseInt(data.targetStaffId, 10);
-    setQueue(prev => prev.map(m => m.id === activeToken.id ? { ...m, assignedTo: targetStaffId } : m));
+    db.transferQueueMember(activeToken.id, targetStaffId);
+    refreshData();
     setTransferModalOpen(false);
     toast({ title: "Token Transferred", description: `Token ${activeToken.ticketNumber} transferred.` });
   };
@@ -101,7 +103,7 @@ export default function StaffPage() {
         status: 'pending',
     };
     
-    setShiftRequests(prev => [...prev, newRequest]);
+    db.addShiftRequest(newRequest);
     
     toast({ title: "Request Sent", description: "Your shift change request has been sent for approval." });
     shiftRequestForm.reset();

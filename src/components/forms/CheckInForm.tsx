@@ -17,7 +17,7 @@ const formSchema = z.object({
 });
 
 interface CheckInFormProps {
-  onJoinQueue: (data: z.infer<typeof formSchema>) => void;
+  onJoinQueue: (phone: string) => void;
   isQueueFull: boolean;
 }
 
@@ -31,7 +31,7 @@ export function CheckInForm({ onJoinQueue, isQueueFull }: CheckInFormProps) {
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    onJoinQueue(values);
+    onJoinQueue(values.phone);
     form.reset();
   }
 

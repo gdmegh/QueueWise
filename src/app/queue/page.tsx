@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Bell } from 'lucide-react';
 import * as QueueService from '@/lib/queue-service';
 import { useRouter } from 'next/navigation';
+import * as db from '@/lib/database';
 
 const REFRESH_INTERVAL_MS = 5000;
 
@@ -58,14 +59,15 @@ export default function QueuePage() {
     }
 
     const waitTimes = allServiced.map(m =>
-      Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime)))
+      m.checkInTime && m.services[0]?.startTime ? Math.max(0, differenceInMinutes(new Date(m.services[0].startTime), new Date(m.checkInTime))) : 0
     );
     const maxWaitTime = Math.max(...waitTimes);
-    const totalServiceTime = allServiced.reduce(
-      (acc, m) => acc + Math.max(0, differenceInMinutes(new Date(m.estimatedServiceTime), new Date(m.checkInTime))),
-      0
+
+    const serviceTimes = allServiced.flatMap(m => m.services).map(s => 
+      s.startTime && s.endTime ? Math.max(0, differenceInMinutes(new Date(s.endTime), new Date(s.startTime))) : 0
     );
-    const averageServiceTime = totalServiceTime / allServiced.length;
+    const totalServiceTime = serviceTimes.reduce((acc, time) => acc + time, 0);
+    const averageServiceTime = serviceTimes.length > 0 ? totalServiceTime / serviceTimes.length : 0;
 
     setAnalytics({
       totalWaiting,
@@ -84,26 +86,7 @@ export default function QueuePage() {
   };
 
   const handleSetFeedback = (memberId: number, feedback: any) => {
-    const allMembers = [...QueueService.getQueue(), ...QueueService.getServiced()];
-    const member = allMembers.find(m => m.id === memberId);
-    
-    if (member) {
-        member.feedback = feedback;
-        
-        let queueList = QueueService.getQueue();
-        const queueIndex = queueList.findIndex(q => q.id === memberId);
-        if (queueIndex > -1) {
-            queueList[queueIndex] = member;
-            QueueService.updateQueue(queueList);
-        }
-
-        let servicedList = QueueService.getServiced();
-        const servicedIndex = servicedList.findIndex(s => s.id === memberId);
-        if (servicedIndex > -1) {
-            const newServicedList = servicedList.map(s => s.id === memberId ? member : s);
-            localStorage.setItem('serviced', JSON.stringify(newServicedList));
-        }
-    }
+    db.updateMemberFeedback(memberId, feedback);
     refreshData();
   };
 

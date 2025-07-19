@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Bar, BarChart as RechartsBarChart, Pie, PieChart, ResponsiveContainer, Cell } from 'recharts';
@@ -7,8 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Crown, BarChart, Settings, PlusCircle, Loader2 } from 'lucide-react';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartConfig } from '@/components/ui/chart';
-import { useLocalStorage } from '@/hooks/use-local-storage';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useToast } from '@/hooks/use-toast';
+import * as db from '@/lib/database';
 
 interface Company {
   id: string;
@@ -84,14 +85,16 @@ const plansChartConfig = {
 
 export default function SuperAdminPage() {
     const { toast } = useToast();
-    const [companies, setCompanies] = useLocalStorage<Company[]>('companies', [
-        { id: 'comp-001', name: 'Innovate Corp', status: 'active', users: 150, plan: 'Enterprise' },
-        { id: 'comp-002', name: 'Solutions Inc.', status: 'active', users: 75, plan: 'Business' },
-        { id: 'comp-003', name: 'Data Systems', status: 'trial', users: 10, plan: 'Trial' },
-        { id: 'comp-004', name: 'NextGen Ventures', status: 'inactive', users: 0, plan: 'None' },
-        { id: 'comp-005', name: 'Global Connect', status: 'active', users: 300, plan: 'Enterprise' },
-    ]);
+    const [companies, setCompanies] = useState<Company[]>([]);
     const [isAddModalOpen, setAddModalOpen] = useState(false);
+    
+    const refreshData = () => {
+        setCompanies(db.getCompanies());
+    };
+
+    useEffect(() => {
+        refreshData();
+    }, []);
 
     const addCompanyForm = useForm<z.infer<typeof addCompanyFormSchema>>({
         resolver: zodResolver(addCompanyFormSchema),
@@ -106,7 +109,8 @@ export default function SuperAdminPage() {
             status: data.plan === 'Trial' ? 'trial' : 'active',
             users: 0,
         };
-        setCompanies(prev => [...prev, newCompany]);
+        db.addCompany(newCompany);
+        refreshData();
         toast({ title: 'Company Added', description: `${data.name} has been added to the platform.`});
         setAddModalOpen(false);
         addCompanyForm.reset();
