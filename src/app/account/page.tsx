@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { UserCircle, Ticket, Clock, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+
 
 // Mock logged-in user data - in a real app this would come from an auth context
 const MOCK_REGISTERED_USER = {
@@ -17,16 +19,48 @@ const MOCK_REGISTERED_USER = {
     phone: '09876543210'
 };
 
+const MAX_QUEUE_SIZE = 20;
+
 export default function AccountPage() {
     const router = useRouter();
-    const [serviced] = useLocalStorage<QueueMember[]>('serviced', []);
+    const { toast } = useToast();
+    const [serviced, setServiced] = useLocalStorage<QueueMember[]>('serviced', []);
+    const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
+    const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 111);
 
     // Filter history for the mock user
     const userHistory = serviced.filter(item => item.phone === MOCK_REGISTERED_USER.phone);
 
     const handleNewCheckin = () => {
-        // Pre-fill check-in for the user
-        router.push('/check-in');
+        if (queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE) {
+            toast({
+                title: "Queue is full",
+                description: "We're sorry, the queue is currently full. Please try again later.",
+                variant: 'destructive',
+            });
+            return;
+        }
+
+        const newMember: QueueMember = {
+            id: Date.now(),
+            ticketNumber: `A-${String(ticketCounter).padStart(3, '0')}`,
+            name: MOCK_REGISTERED_USER.name,
+            phone: MOCK_REGISTERED_USER.phone,
+            checkInTime: new Date(),
+            status: 'waiting',
+            services: [],
+            estimatedServiceTime: new Date(), // Placeholder
+        };
+
+        setTicketCounter(prev => prev + 1);
+        setQueue(prev => [...prev, newMember]);
+        
+        toast({
+            title: `Welcome back, ${newMember.name}!`,
+            description: `Your ticket is ${newMember.ticketNumber}. Please select your services.`
+        });
+
+        router.push(`/service?ticketNumber=${newMember.ticketNumber}`);
     }
 
     return (
