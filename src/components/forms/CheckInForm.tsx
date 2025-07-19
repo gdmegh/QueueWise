@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -79,3 +80,4 @@ export function CheckInForm({ onJoinQueue, isQueueFull }: CheckInFormProps) {
     </Card>
   );
 }
+

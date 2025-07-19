@@ -1,9 +1,10 @@
+
 import type { FC } from 'react';
 import { BarChart as BarChartIcon, Clock, MessageSquareQuote, Sigma, Users } from 'lucide-react';
 import { Bar, BarChart as RechartsBarChart, Pie, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, PieChart as RechartsPieChart, Cell } from 'recharts';
 import type { AnalyticsData, QueueMember } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '../ui/chart';
 
 interface AnalyticsCardProps {
   title: string;
@@ -34,7 +35,8 @@ const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3
 
 export const AnalyticsDashboard: FC<AnalyticsDashboardProps> = ({ analytics, allServiced }) => {
   const servicePopularityData = (allServiced || [])
-    .flatMap(member => (member.services || []).map(s => s.name))
+    .flatMap(member => member.services || [])
+    .map(s => s.name)
     .reduce((acc, serviceName) => {
       const existing = acc.find(item => item.name === serviceName);
       if (existing) {
@@ -131,3 +133,4 @@ export const AnalyticsDashboard: FC<AnalyticsDashboardProps> = ({ analytics, all
     </Card>
   );
 };
+

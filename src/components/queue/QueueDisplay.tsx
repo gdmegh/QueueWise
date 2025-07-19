@@ -1,6 +1,5 @@
 
 import type { FC } from 'react';
-import { format } from 'date-fns';
 import { Bell, Users, List, Banknote, UserPlus, HandCoins, Edit, CheckCircle } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -9,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { services } from '@/lib/services';
 import { Button } from '../ui/button';
 import { FeedbackForm } from '../forms/FeedbackForm';
-
 
 interface QueueDisplayProps {
   queue: QueueMember[];
@@ -148,4 +146,3 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
      </Card>
   );
 };
-

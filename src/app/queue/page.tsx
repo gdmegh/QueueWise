@@ -2,11 +2,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { z } from 'zod';
 import { differenceInMinutes } from 'date-fns';
 
 import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
-import { CheckInForm } from '@/components/forms/CheckInForm';
 import { QueueDisplay } from '@/components/queue/QueueDisplay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WaitTimeCard } from '@/components/queue/WaitTimeCard';
@@ -14,14 +12,8 @@ import type { QueueMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Bell, Edit } from 'lucide-react';
 import * as QueueService from '@/lib/queue-service';
-import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
-const formSchema = z.object({
-  phone: z.string().regex(/^\d{11}$/, { message: 'Please enter a valid 11-digit phone number.' }),
-});
-
-const MAX_QUEUE_SIZE = 100;
 const REFRESH_INTERVAL_MS = 5000;
 
 
@@ -84,21 +76,6 @@ export default function QueuePage() {
       feedbackReceived,
     });
   }, []);
-
-
-  const handleJoinQueue = (data: z.infer<typeof formSchema>) => {
-    if (queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE) {
-        toast({
-            title: "Queue is full",
-            description: "We're sorry, the queue is currently full. Please try again later.",
-            variant: 'destructive',
-        });
-        return;
-    }
-    
-    // Redirect to home page for the full guest check-in flow
-    router.push('/');
-  };
 
   const handleEditService = (memberId: number) => {
     const member = queue.find(m => m.id === memberId);
@@ -170,7 +147,6 @@ export default function QueuePage() {
     <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1 space-y-8">
-          <CheckInForm onJoinQueue={handleJoinQueue} isQueueFull={queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE}/>
           <WaitTimeCard queueLength={analytics.totalWaiting} servicedCount={analytics.servicedCount} />
         </div>
         <div className="lg:col-span-2">
@@ -195,4 +171,3 @@ export default function QueuePage() {
     </main>
   );
 }
-

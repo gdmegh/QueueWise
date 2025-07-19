@@ -16,7 +16,7 @@ import { PlusCircle, Edit, Trash2, UserPlus, CalendarDays, Loader2, Shield, BarC
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { AnalyticsDashboard } from '@/components/AnalyticsDashboard';
+import { AnalyticsDashboard } from '@/components/dashboard/AnalyticsDashboard';
 import { differenceInMinutes, format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
@@ -57,7 +57,7 @@ export default function AdminPage() {
 
   const [companySettings, setCompanySettings] = useLocalStorage<CompanySettings>('companySettings', {
     name: 'QueueWise',
-    logoUrl: '/logo.svg', // Placeholder
+    logoUrl: '/assets/logo.svg', // Standardized path
     primaryColor: '45 85% 60%',
   });
 
@@ -430,5 +430,3 @@ export default function AdminPage() {
     </main>
   );
 }
-
-    

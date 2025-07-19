@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -6,8 +7,8 @@ import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
-import { CheckInForm } from '@/components/CheckInForm';
-import { WaitTimeCard } from '@/components/WaitTimeCard';
+import { CheckInForm } from '@/components/forms/CheckInForm';
+import { WaitTimeCard } from '@/components/queue/WaitTimeCard';
 import type { QueueMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -145,3 +146,4 @@ export default function HomePageContent() {
     </main>
   );
 }
+

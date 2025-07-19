@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, type FC } from 'react';
@@ -11,6 +12,29 @@ interface WaitTimeCardProps {
   queueLength: number;
   servicedCount: number;
 }
+
+const WaitTimeDisplay: FC<{ prediction: IntelligentWaitTimePredictionOutput | null }> = ({ prediction }) => (
+  <>
+    <div className="text-5xl font-bold text-primary">
+      {prediction?.predictedWaitTime ?? 'N/A'}{' '}
+      <span className="text-2xl font-medium text-muted-foreground">min</span>
+    </div>
+    <div className="text-xs text-muted-foreground mt-2 flex items-start space-x-2">
+      <BrainCircuit className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+      <p>
+        <span className="font-semibold">AI Insight:</span> {prediction?.reasoning}
+      </p>
+    </div>
+  </>
+);
+
+const WaitTimeSkeleton: FC = () => (
+  <div className="space-y-2 pt-2">
+    <Skeleton className="h-10 w-1/2 bg-white/10" />
+    <Skeleton className="h-4 w-full bg-white/10" />
+    <Skeleton className="h-4 w-3/4 bg-white/10" />
+  </div>
+);
 
 export const WaitTimeCard: FC<WaitTimeCardProps> = ({ queueLength, servicedCount }) => {
   const [prediction, setPrediction] = useState<IntelligentWaitTimePredictionOutput | null>(null);
@@ -38,26 +62,7 @@ export const WaitTimeCard: FC<WaitTimeCardProps> = ({ queueLength, servicedCount
         <Hourglass className="h-4 w-4 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="space-y-2 pt-2">
-            <Skeleton className="h-10 w-1/2 bg-white/10" />
-            <Skeleton className="h-4 w-full bg-white/10" />
-            <Skeleton className="h-4 w-3/4 bg-white/10" />
-          </div>
-        ) : (
-          <>
-            <div className="text-5xl font-bold text-primary">
-              {prediction?.predictedWaitTime ?? 'N/A'}{' '}
-              <span className="text-2xl font-medium text-muted-foreground">min</span>
-            </div>
-            <div className="text-xs text-muted-foreground mt-2 flex items-start space-x-2">
-              <BrainCircuit className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-              <p>
-                <span className="font-semibold">AI Insight:</span> {prediction?.reasoning}
-              </p>
-            </div>
-          </>
-        )}
+        {isLoading ? <WaitTimeSkeleton /> : <WaitTimeDisplay prediction={prediction} />}
       </CardContent>
     </Card>
   );

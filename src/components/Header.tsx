@@ -1,3 +1,4 @@
+
 import Link from 'next/link';
 import { Users, LayoutDashboard, Monitor, Shield, UserCog, UserCircle, Crown } from 'lucide-react';
 import { Button } from './ui/button';
@@ -8,7 +9,7 @@ import Image from 'next/image';
 export function Header() {
   const [companySettings] = useLocalStorage<CompanySettings>('companySettings', {
     name: 'QueueWise',
-    logoUrl: '',
+    logoUrl: '/assets/logo.svg', // Standardized path
     primaryColor: '45 85% 60%',
   });
 
@@ -27,7 +28,7 @@ export function Header() {
             </h1>
         </Link>
         <nav className="flex items-center gap-2">
-           <Link href="/live-queue" passHref>
+           <Link href="/queue" passHref>
             <Button variant="ghost">
                 <LayoutDashboard className="mr-2 h-4 w-4" />
                 Live Queue
@@ -68,5 +69,3 @@ export function Header() {
     </header>
   );
 }
-
-    

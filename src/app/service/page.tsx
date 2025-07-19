@@ -8,12 +8,10 @@ import type { QueueMember } from '@/lib/types';
 import { services as serviceCategories, SubService, ServiceCategory } from '@/lib/services';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowRight, PlusCircle, Trash2, Banknote, List, ArrowLeft, Building, HandCoins } from 'lucide-react';
+import { Loader2, ArrowRight, Trash2, Banknote, List, ArrowLeft, Building, HandCoins } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 
 const serviceIcons: { [key: string]: React.ReactNode } = {
   'Personal Banking': <Building className="h-8 w-8" />,
@@ -66,11 +64,10 @@ export default function ServicePage() {
   };
 
   const handleServiceSelect = (service: SubService) => {
-    setSelectedService(service);
     if (service.subServices && service.subServices.length > 0) {
+      setSelectedService(service);
       setSelectionStep('subService');
     } else {
-      // If no sub-services, this is the final selection
       addService(service);
     }
   };
@@ -191,12 +188,12 @@ export default function ServicePage() {
       );
     }
 
-    if (selectionStep === 'subService' && selectedService) {
+    if (selectionStep === 'subService' && selectedService && selectedService.subServices) {
         return (
             <div className="space-y-4">
                 <Button variant="outline" onClick={handleBack}><ArrowLeft className="mr-2"/> Back to Services</Button>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {selectedService.subServices?.map(sub => (
+                    {selectedService.subServices.map(sub => (
                          <Card key={sub.name} className="cursor-pointer hover:bg-accent/50 hover:border-primary transition-all group" onClick={() => handleSubServiceSelect(sub)}>
                             <CardContent className="p-4 flex items-center gap-4">
                                <p className="font-semibold flex-grow">{sub.name}</p>
@@ -287,4 +284,3 @@ export default function ServicePage() {
   );
 }
 
-    

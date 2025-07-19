@@ -1,3 +1,4 @@
+
 export interface SubService {
     name: string;
     avgTime: number; // in minutes
@@ -94,3 +95,4 @@ export const flatServices: { name: string; avgTime: number; counter: string; }[]
     { name: 'Deposit/Withdrawal', avgTime: 3, counter: 'Counter 3' },
     { name: 'Loan Application', avgTime: 20, counter: 'Counter 4' },
 ]
+
