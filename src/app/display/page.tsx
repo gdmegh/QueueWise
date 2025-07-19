@@ -3,16 +3,43 @@
 
 import { useEffect, useState } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
-import { QueueMember, SubService } from '@/lib/types';
+import { QueueMember } from '@/lib/types';
 import { WaitTimeCard } from '@/components/WaitTimeCard';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Users, List, Banknote, HandCoins, Clock, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
-import { differenceInMinutes, formatDistanceToNowStrict } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Users, Clock, UserCheck } from 'lucide-react';
+import { differenceInMinutes } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { services } from '@/lib/services';
 
 const REFRESH_INTERVAL_MS = 15000; // 15 seconds
+
+const createInitialQueue = (): QueueMember[] => {
+    const now = new Date();
+    return Array.from({ length: 50 }, (_, i) => {
+        const checkInTime = new Date(now.getTime() - (50 - i) * 2 * 60000); // Staggered check-in times
+        const service = services[i % services.length].subServices[0];
+        const isInService = i < 6;
+        
+        const memberService = { 
+            ...service,
+            // Assign to one of the 6 counters sequentially
+            counter: `Counter ${i + 1}`
+        };
+
+        return {
+            id: Date.now() + i,
+            ticketNumber: `A-${String(101 + i).padStart(3, '0')}`,
+            name: `Customer ${i + 1}`,
+            phone: `012345678${String(10 + i).padStart(2, '0')}`,
+            checkInTime: checkInTime,
+            estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * service.avgTime * 60000),
+            status: isInService ? 'in-service' : 'waiting',
+            services: [memberService], // Start with one service for simplicity
+            assignedTo: isInService ? (i % 4) + 2 : undefined, // Assign to mock staff
+        };
+    });
+};
+
 
 const CounterStatusCard = ({ counterNumber, member }: { counterNumber: number; member: QueueMember | null }) => (
     <Card className={`flex flex-col items-center justify-center p-4 rounded-xl shadow-lg transition-all duration-500 ${member ? 'bg-primary/20 border-primary animate-pulse' : 'bg-muted/50'}`}>
@@ -21,11 +48,9 @@ const CounterStatusCard = ({ counterNumber, member }: { counterNumber: number; m
         </CardHeader>
         <CardContent className="p-2 flex flex-col items-center justify-center flex-grow">
             {member ? (
-                <>
-                    <div className="text-5xl font-extrabold tracking-wider text-white mb-2">
-                        {member.ticketNumber}
-                    </div>
-                </>
+                <div className="text-5xl font-extrabold tracking-wider text-white mb-2">
+                    {member.ticketNumber}
+                </div>
             ) : (
                 <div className="text-2xl text-muted-foreground/50">Available</div>
             )}
@@ -82,7 +107,7 @@ const CounterQueueCard = ({ title, queue, nowServing }: { title: string; queue: 
 
 
 export default function DisplayPage() {
-    const [queue] = useLocalStorage<QueueMember[]>('queue', []);
+    const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', createInitialQueue());
     const [serviced] = useLocalStorage<QueueMember[]>('serviced', []);
 
     // Force a re-render on an interval to pick up local storage changes
@@ -90,9 +115,63 @@ export default function DisplayPage() {
         const intervalId = setInterval(() => {
             window.dispatchEvent(new Event('storage'));
         }, REFRESH_INTERVAL_MS);
+        
+        const simulation = setInterval(() => {
+          setQueue(prevQueue => {
+            const nowServing = prevQueue.filter(m => m.status === 'in-service');
+            let newQueue = [...prevQueue];
 
-        return () => clearInterval(intervalId);
-    }, []);
+            // 1. Check if any 'in-service' customers are done
+            const now = new Date();
+            nowServing.forEach(member => {
+                if (new Date(member.estimatedServiceTime) <= now) {
+                    // Move from queue to serviced
+                    newQueue = newQueue.filter(m => m.id !== member.id);
+                }
+            });
+            
+            // 2. Fill empty counters
+            const servingCounters = newQueue.filter(m => m.status === 'in-service').flatMap(m => m.services.map(s => s.counter));
+            const availableCounters = Array.from({length: 6}, (_, i) => `Counter ${i+1}`).filter(c => !servingCounters.includes(c));
+            
+            if (availableCounters.length > 0) {
+              const waitingByCounter: {[key: string]: QueueMember[]} = {};
+              newQueue.filter(m => m.status === 'waiting').forEach(m => {
+                  m.services.forEach(s => {
+                    if (!waitingByCounter[s.counter]) waitingByCounter[s.counter] = [];
+                    if (!waitingByCounter[s.counter].find(wm => wm.id === m.id)) {
+                        waitingByCounter[s.counter].push(m);
+                    }
+                  });
+              });
+
+              availableCounters.forEach(counterName => {
+                  if (waitingByCounter[counterName] && waitingByCounter[counterName].length > 0) {
+                      const nextInLine = waitingByCounter[counterName].sort((a,b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime())[0];
+                      
+                       newQueue = newQueue.map(member => 
+                        member.id === nextInLine.id 
+                        ? { 
+                            ...member, 
+                            status: 'in-service',
+                            services: member.services.map(s => ({...s, counter: counterName})), // Assign to this counter
+                            estimatedServiceTime: new Date(Date.now() + member.services.reduce((acc, s) => acc + s.avgTime, 0) * 60000)
+                          } 
+                        : member
+                      );
+                  }
+              });
+            }
+            
+            return newQueue;
+          });
+        }, 10000); // Run simulation every 10 seconds
+
+        return () => {
+          clearInterval(intervalId);
+          clearInterval(simulation);
+        };
+    }, [setQueue]);
 
     const nowServing = queue.filter(m => m.status === 'in-service');
     const waitingQueue = queue.filter(m => m.status === 'waiting');
