@@ -1,10 +1,12 @@
 'use client';
 
+import { Bar, BarChart as RechartsBarChart, Pie, PieChart, ResponsiveContainer, Cell } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Crown, BarChart, Settings, PlusCircle } from 'lucide-react';
+import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent, ChartConfig } from '@/components/ui/chart';
 
 // Mock data for companies
 const mockCompanies = [
@@ -27,6 +29,52 @@ const SuperAdminAnalyticsCard = ({ title, value, description }: { title: string,
     </Card>
 );
 
+const companiesChartData = [
+  { month: 'January', companies: 2 },
+  { month: 'February', companies: 1 },
+  { month: 'March', companies: 3 },
+  { month: 'April', companies: 5 },
+  { month: 'May', companies: 4 },
+  { month: 'June', companies: 6 },
+];
+
+const companiesChartConfig = {
+  companies: {
+    label: 'New Companies',
+    color: 'hsl(var(--chart-2))',
+  },
+} satisfies ChartConfig;
+
+const plansChartData = [
+  { plan: 'Enterprise', companies: 2, fill: 'hsl(var(--chart-1))' },
+  { plan: 'Business', companies: 1, fill: 'hsl(var(--chart-2))' },
+  { plan: 'Trial', companies: 1, fill: 'hsl(var(--chart-3))' },
+  { plan: 'None', companies: 1, fill: 'hsl(var(--chart-5))' },
+];
+
+const plansChartConfig = {
+    companies: {
+      label: 'Companies',
+    },
+    Enterprise: {
+        label: "Enterprise",
+        color: "hsl(var(--chart-1))",
+    },
+    Business: {
+        label: "Business",
+        color: "hsl(var(--chart-2))",
+    },
+    Trial: {
+        label: "Trial",
+        color: "hsl(var(--chart-3))",
+    },
+    None: {
+        label: "None",
+        color: "hsl(var(--chart-5))",
+    }
+} satisfies ChartConfig;
+
+
 export default function SuperAdminPage() {
     return (
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -47,6 +95,43 @@ export default function SuperAdminPage() {
                             <SuperAdminAnalyticsCard title="Active Subscriptions" value="3" description="Companies on paid plans." />
                              <SuperAdminAnalyticsCard title="Platform Health" value="99.9%" description="System uptime over the last 30 days." />
                         </div>
+                    </div>
+
+                    {/* Graphical Analytics */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>New Companies Over Time</CardTitle>
+                                <CardDescription>Monthly new company sign-ups.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <ChartContainer config={companiesChartConfig} className="h-[250px] w-full">
+                                    <RechartsBarChart accessibilityLayer data={companiesChartData}>
+                                        <ChartTooltip content={<ChartTooltipContent hideLabel />} />
+                                        <Bar dataKey="companies" fill="var(--color-companies)" radius={4} />
+                                    </RechartsBarChart>
+                                </ChartContainer>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                             <CardHeader>
+                                <CardTitle>Subscription Plan Distribution</CardTitle>
+                                <CardDescription>Distribution of active subscription plans.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex items-center justify-center">
+                               <ChartContainer config={plansChartConfig} className="h-[250px] w-full aspect-square">
+                                    <PieChart>
+                                        <ChartTooltip content={<ChartTooltipContent nameKey="plan" hideLabel />} />
+                                        <Pie data={plansChartData} dataKey="companies" nameKey="plan" innerRadius={50}>
+                                            {plansChartData.map((entry) => (
+                                                <Cell key={`cell-${entry.plan}`} fill={entry.fill} />
+                                            ))}
+                                        </Pie>
+                                        <ChartLegend content={<ChartLegendContent nameKey="plan" />} />
+                                    </PieChart>
+                                </ChartContainer>
+                            </CardContent>
+                        </Card>
                     </div>
 
                     {/* Company Management Section */}
