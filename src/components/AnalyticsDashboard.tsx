@@ -1,6 +1,6 @@
 import type { FC } from 'react';
-import { BarChart, Clock, MessageSquareQuote, Sigma, Users } from 'lucide-react';
-import { Bar, Pie, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, PieChart as RechartsPieChart, Cell } from 'recharts';
+import { BarChart as BarChartIcon, Clock, MessageSquareQuote, Sigma, Users } from 'lucide-react';
+import { Bar, BarChart as RechartsBarChart, Pie, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, PieChart as RechartsPieChart, Cell } from 'recharts';
 import type { AnalyticsData, QueueMember } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from './ui/chart';
@@ -58,7 +58,7 @@ export const AnalyticsDashboard: FC<AnalyticsDashboardProps> = ({ analytics, all
   return (
     <Card className="h-full bg-card/50">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 font-headline text-primary"><BarChart /> Service Analytics</CardTitle>
+        <CardTitle className="flex items-center gap-2 font-headline text-primary"><BarChartIcon /> Service Analytics</CardTitle>
         <CardDescription>Overview of today's queue performance.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
