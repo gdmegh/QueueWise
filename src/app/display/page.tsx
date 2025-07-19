@@ -1,16 +1,18 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocalStorage } from '@/hooks/use-local-storage';
 import { QueueMember } from '@/lib/types';
 import { WaitTimeCard } from '@/components/WaitTimeCard';
 import { Badge } from '@/components/ui/badge';
-import { Bell, Users, List, Banknote, HandCoins, Clock, UserCheck } from 'lucide-react';
+import { Bell, Users, List, Banknote, HandCoins, Clock, UserCheck, ArrowLeft, ArrowRight } from 'lucide-react';
 import { differenceInMinutes } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
 const REFRESH_INTERVAL_MS = 15000; // 15 seconds
+const ITEMS_PER_PAGE = 10;
 
 const serviceIcons: { [key: string]: React.ReactNode } = {
     'General Inquiry': <List className="h-8 w-8" />,
@@ -66,6 +68,7 @@ const CounterStatusCard = ({ counterNumber, member }: { counterNumber: number; m
 export default function DisplayPage() {
     const [queue] = useLocalStorage<QueueMember[]>('queue', []);
     const [serviced] = useLocalStorage<QueueMember[]>('serviced', []);
+    const [currentPage, setCurrentPage] = useState(1);
 
     // Force a re-render on an interval to pick up local storage changes
     useEffect(() => {
@@ -80,7 +83,21 @@ export default function DisplayPage() {
     }, []);
 
     const nowServing = queue.filter(m => m.status === 'in-service');
-    const upNext = queue.filter(m => m.status === 'waiting').slice(0, 10); // Limit to next 10
+    const waitingQueue = queue.filter(m => m.status === 'waiting');
+    
+    // Pagination logic
+    const totalPages = Math.ceil(waitingQueue.length / ITEMS_PER_PAGE);
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const upNext = waitingQueue.slice(startIndex, endIndex);
+
+    const handleNextPage = () => {
+        setCurrentPage(prev => Math.min(prev + 1, totalPages));
+    };
+
+    const handlePrevPage = () => {
+        setCurrentPage(prev => Math.max(prev - 1, 1));
+    };
 
     const counters = Array.from({ length: 6 }, (_, i) => {
         const counterName = `Counter ${i + 1}`;
@@ -113,9 +130,20 @@ export default function DisplayPage() {
 
                 {/* Up Next & Wait Time Section */}
                 <div className="lg:col-span-2 flex flex-col gap-8">
-                    <div className="bg-card/50 rounded-xl shadow-lg p-8 flex-grow">
-                        <h2 className="text-4xl font-bold text-primary mb-6 flex items-center gap-3"><Users /> Up Next</h2>
-                        <div className="space-y-4">
+                    <div className="bg-card/50 rounded-xl shadow-lg p-8 flex flex-col flex-grow">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-4xl font-bold text-primary flex items-center gap-3"><Users /> Up Next</h2>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="icon" onClick={handlePrevPage} disabled={currentPage === 1}>
+                                    <ArrowLeft />
+                                </Button>
+                                <span className="text-lg text-muted-foreground">Page {currentPage} of {totalPages || 1}</span>
+                                <Button variant="outline" size="icon" onClick={handleNextPage} disabled={currentPage === totalPages || totalPages === 0}>
+                                    <ArrowRight />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="space-y-4 flex-grow">
                             {upNext.length > 0 ? upNext.map((member, index) => (
                                 <div key={member.id} className="grid grid-cols-4 items-center bg-muted p-4 rounded-lg gap-4">
                                     <Badge variant="secondary" className="text-4xl px-4 py-2 col-span-1 justify-center">{member.ticketNumber}</Badge>
@@ -136,7 +164,7 @@ export default function DisplayPage() {
                                     </div>
                                 </div>
                             )) : (
-                                <div className="text-center text-2xl text-muted-foreground p-10">The queue is empty.</div>
+                                <div className="text-center text-2xl text-muted-foreground p-10 flex-grow flex items-center justify-center">The queue is empty.</div>
                             )}
                         </div>
                     </div>

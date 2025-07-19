@@ -23,14 +23,21 @@ const formSchema = z.object({
   phone: z.string().regex(/^\d{11}$/, { message: 'Please enter a valid 11-digit phone number.' }),
 });
 
-const MAX_QUEUE_SIZE = 20;
+const MAX_QUEUE_SIZE = 100; // Increased max queue size
 const SIMULATION_INTERVAL_MS = 20000; // 20 seconds for simulation
 
 const createInitialQueue = (): QueueMember[] => {
     const now = new Date();
-    return Array.from({ length: 10 }, (_, i) => {
-        const checkInTime = new Date(now.getTime() - (10 - i) * 5 * 60000); // Staggered check-in times
+    return Array.from({ length: 50 }, (_, i) => {
+        const checkInTime = new Date(now.getTime() - (50 - i) * 2 * 60000); // Staggered check-in times
         const service = services[i % services.length].subServices[0];
+        const isInService = i < 6;
+        
+        const memberService = { 
+            ...service,
+            counter: `Counter ${i + 1}`
+        };
+
         return {
             id: Date.now() + i,
             ticketNumber: `A-${String(101 + i).padStart(3, '0')}`,
@@ -38,9 +45,9 @@ const createInitialQueue = (): QueueMember[] => {
             phone: `012345678${String(10 + i).padStart(2, '0')}`,
             checkInTime: checkInTime,
             estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * service.avgTime * 60000),
-            status: i < 1 ? 'in-service' : 'waiting',
-            services: [service],
-            assignedTo: i < 3 ? 2 : undefined, // Assign first 3 to mock staff
+            status: isInService ? 'in-service' : 'waiting',
+            services: isInService ? [memberService] : [service],
+            assignedTo: isInService ? (i % 4) + 2 : undefined, // Assign to mock staff
         };
     });
 };
@@ -57,7 +64,7 @@ export default function QueuePage() {
     servicedCount: 0,
     feedbackReceived: 0,
   });
-  const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 111);
+  const [ticketCounter, setTicketCounter] = useLocalStorage('ticketCounter', 151); // Updated counter
   const { toast } = useToast();
 
   const updateAnalytics = useCallback(() => {
