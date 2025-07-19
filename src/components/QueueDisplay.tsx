@@ -31,10 +31,10 @@ const serviceDetails: { [key: string]: { icon: React.ReactNode; counter: string 
     };
 
     const addService = (s: any) => {
-        if (!acc[s.name]) {
+        if (s && s.name && !acc[s.name]) {
             acc[s.name] = { icon: icons[s.name] || <List className="h-4 w-4" />, counter: s.counter };
         }
-        if (s.subServices) {
+        if (s && s.subServices) {
             s.subServices.forEach(addService);
         }
     };
@@ -54,7 +54,11 @@ const NowServing: FC<{ member: QueueMember, onSetFeedback: (memberId: number, fe
         <CardContent className="text-center">
             <p className="text-5xl font-bold tracking-wider text-foreground">{member.ticketNumber}</p>
             <p className="text-xl text-muted-foreground mt-2">{member.name}</p>
-            <p className="text-2xl font-semibold text-primary mt-4">Please proceed to {serviceDetails[member.service]?.counter || 'Counter'}</p>
+            <div className="text-2xl font-semibold text-primary mt-4 space-y-1">
+              {member.services?.map((service, index) => (
+                <p key={index}>Please proceed to {service.counter} for {service.name}</p>
+              ))}
+            </div>
             {member.status === 'serviced' && !member.feedback && <FeedbackForm member={member} onSubmitFeedback={onSetFeedback} />}
             {member.status === 'serviced' && member.feedback && (
                  <div className="mt-4 flex items-center justify-center gap-2 text-green-500">
@@ -85,7 +89,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
                             <TableRow>
                                 <TableHead className="w-[100px]">Ticket</TableHead>
                                 <TableHead>Name</TableHead>
-                                <TableHead>Service</TableHead>
+                                <TableHead>Services</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -101,9 +105,19 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
                                     </div>
                                 </TableCell>
                                  <TableCell>
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      {serviceDetails[member.service || '']?.icon}
-                                      {member.service}
+                                    <div className="flex flex-col gap-1">
+                                      {(member.services || []).map((service, index) => (
+                                         <div key={index} className="flex items-center gap-2 text-muted-foreground text-xs">
+                                           {serviceDetails[service.name]?.icon}
+                                           <span>{service.name}</span>
+                                         </div>
+                                      ))}
+                                      {(!member.services || member.services.length === 0) && (
+                                        <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                                            <List className="h-4 w-4" />
+                                            <span>Pending Selection...</span>
+                                        </div>
+                                      )}
                                     </div>
                                 </TableCell>
                                 <TableCell className="text-right">

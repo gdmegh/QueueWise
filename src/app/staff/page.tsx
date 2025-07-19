@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserCog, Users, CalendarOff, Check, Send, ArrowRightLeft, Loader2 } from 'lucide-react';
+import { UserCog, Users, CalendarOff, Check, Send, ArrowRightLeft, Loader2, List } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -120,7 +120,7 @@ export default function StaffPage() {
                                 <TableRow>
                                     <TableHead>Ticket</TableHead>
                                     <TableHead>Customer</TableHead>
-                                    <TableHead>Service</TableHead>
+                                    <TableHead>Services</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -129,7 +129,14 @@ export default function StaffPage() {
                                     <TableRow key={member.id}>
                                         <TableCell><Badge variant="secondary">{member.ticketNumber}</Badge></TableCell>
                                         <TableCell>{member.name}</TableCell>
-                                        <TableCell>{member.service}</TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1">
+                                                {member.services.map((s, i) => (
+                                                    <Badge variant="outline" key={i} className="text-xs">{s.name}</Badge>
+                                                ))}
+                                                {member.services.length === 0 && <Badge variant="outline">Pending</Badge>}
+                                            </div>
+                                        </TableCell>
                                         <TableCell className="text-right space-x-1">
                                             <Button size="sm" variant="outline" onClick={() => handleResolve(member)}><Check className="mr-1 h-4 w-4"/> Resolve</Button>
                                             <Button size="sm" variant="ghost" onClick={() => handleTransfer(member)}><ArrowRightLeft className="mr-1 h-4 w-4"/> Transfer</Button>

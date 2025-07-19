@@ -10,13 +10,14 @@ import type { QueueMember } from '@/lib/types';
 import { services as serviceCategories, SubService } from '@/lib/services';
 import { getServiceRecommendation } from '@/app/actions';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowRight } from 'lucide-react';
+import { Loader2, ArrowRight, PlusCircle, Trash2, Banknote, List } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const serviceFormSchema = z.object({
   category: z.string().min(1, 'Please select a category.'),
@@ -25,6 +26,13 @@ const serviceFormSchema = z.object({
   description: z.string().optional(),
 });
 
+const serviceIcons: { [key: string]: React.ReactNode } = {
+  'Account Services': <Banknote className="h-4 w-4" />,
+  'Card Services': <Banknote className="h-4 w-4" />,
+  'General Inquiry': <List className="h-4 w-4" />,
+  // Add more icons as needed
+};
+
 export default function ServicePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -32,6 +40,7 @@ export default function ServicePage() {
   
   const [queue, setQueue] = useLocalStorage<QueueMember[]>('queue', []);
   const [currentMember, setCurrentMember] = useState<QueueMember | null>(null);
+  const [selectedServices, setSelectedServices] = useState<SubService[]>([]);
   const ticketNumber = searchParams.get('ticketNumber');
 
   const form = useForm<z.infer<typeof serviceFormSchema>>({
@@ -66,6 +75,7 @@ export default function ServicePage() {
       const member = queue.find(m => m.ticketNumber === ticketNumber);
       if (member) {
         setCurrentMember(member);
+        setSelectedServices(member.services || []);
       } else {
         toast({ title: "Invalid Ticket", description: "Could not find a user with that ticket number.", variant: 'destructive' });
         router.push('/');
@@ -76,9 +86,7 @@ export default function ServicePage() {
     }
   }, [ticketNumber, queue, router, toast]);
 
-  const onSubmit = (data: z.infer<typeof serviceFormSchema>) => {
-    if (!currentMember) return;
-    
+  const onAddService = (data: z.infer<typeof serviceFormSchema>) => {
     let finalService: SubService | undefined;
     if (data.subService) {
         finalService = selectedService?.subServices?.find(ss => ss.name === data.subService);
@@ -90,41 +98,60 @@ export default function ServicePage() {
         toast({ title: "Invalid Service", description: "Please complete your service selection.", variant: "destructive" });
         return;
     }
-
-    const { name, avgTime, counter } = finalService;
     
-    setQueue(prevQueue => {
-      const userIndex = prevQueue.findIndex(m => m.id === currentMember.id);
-      
-      const lastPersonInQueue = prevQueue[prevQueue.length - 1];
-      const estimatedServiceTime = new Date(
-        (lastPersonInQueue ? new Date(lastPersonInQueue.estimatedServiceTime).getTime() : Date.now()) +
-        avgTime * 60000
-      );
-        
-      const updatedMember = {
-        ...currentMember,
-        service: name,
-        serviceNotes: data.description,
-        estimatedServiceTime,
-      };
+    // Add description to service if provided
+    const serviceToAdd = {
+        ...finalService,
+        description: data.description,
+    };
 
-      if(userIndex > -1) {
-        const newQueue = [...prevQueue];
-        newQueue[userIndex] = updatedMember;
-        return newQueue;
-      } else {
-        return [...prevQueue, updatedMember];
-      }
-    });
-
-    toast({
-      title: "Service Confirmed!",
-      description: `You are now in the queue for ${name}. Please go to ${counter}.`,
-    });
-
-    router.push('/');
+    setSelectedServices(prev => [...prev, serviceToAdd]);
+    form.reset();
   };
+
+  const onRemoveService = (serviceIndex: number) => {
+    setSelectedServices(prev => prev.filter((_, index) => index !== serviceIndex));
+  };
+  
+  const onConfirmServices = () => {
+      if (!currentMember || selectedServices.length === 0) {
+        toast({ title: "No Services Selected", description: "Please add at least one service.", variant: "destructive" });
+        return;
+      }
+      
+      const totalAvgTime = selectedServices.reduce((acc, s) => acc + s.avgTime, 0);
+
+      setQueue(prevQueue => {
+        const userIndex = prevQueue.findIndex(m => m.id === currentMember.id);
+        
+        const lastPersonInQueue = prevQueue[prevQueue.length - 1];
+        const estimatedServiceTime = new Date(
+            (lastPersonInQueue ? new Date(lastPersonInQueue.estimatedServiceTime).getTime() : Date.now()) +
+            totalAvgTime * 60000
+        );
+          
+        const updatedMember = {
+            ...currentMember,
+            services: selectedServices,
+            estimatedServiceTime,
+        };
+
+        if(userIndex > -1) {
+            const newQueue = [...prevQueue];
+            newQueue[userIndex] = updatedMember;
+            return newQueue;
+        } else {
+            return [...prevQueue, updatedMember];
+        }
+      });
+
+      toast({
+        title: "Services Confirmed!",
+        description: `You are now in the queue.`,
+      });
+
+      router.push('/');
+  }
 
   if (!currentMember) {
     return (
@@ -144,12 +171,12 @@ export default function ServicePage() {
             </CardTitle>
             <div className="text-center text-muted-foreground">Your Ticket: <span className="font-bold text-lg text-primary">{currentMember.ticketNumber}</span></div>
             <CardDescription className="text-center pt-2">
-              Please select the service you need today. This will help us direct you to the right person.
+              Please select the service(s) you need today. You can add multiple services.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(onAddService)} className="space-y-4">
                 <FormField
                   control={form.control}
                   name="category"
@@ -232,13 +259,38 @@ export default function ServicePage() {
                     )}
                   />
                 )}
-
-                <Button type="submit" className="w-full">
-                  Confirm Service & Join Queue <ArrowRight className="ml-2"/>
+                <Button type="submit" variant="outline" className="w-full">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Service
                 </Button>
               </form>
             </Form>
+            
+            {selectedServices.length > 0 && (
+                <div className="mt-6">
+                    <h3 className="text-lg font-medium text-foreground mb-2">Your Selected Services:</h3>
+                    <ul className="space-y-2">
+                        {selectedServices.map((service, index) => (
+                            <li key={index} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                                <div className="flex items-center gap-2">
+                                  {serviceIcons[service.name] || <List className="h-4 w-4" />}
+                                  <span>{service.name}</span>
+                                </div>
+                                <Button variant="ghost" size="icon" onClick={() => onRemoveService(index)}>
+                                    <Trash2 className="h-4 w-4 text-destructive"/>
+                                </Button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
           </CardContent>
+           {selectedServices.length > 0 && (
+                <CardFooter>
+                    <Button onClick={onConfirmServices} className="w-full">
+                        Confirm Services & Join Queue <ArrowRight className="ml-2"/>
+                    </Button>
+                </CardFooter>
+            )}
         </Card>
       </div>
     </main>

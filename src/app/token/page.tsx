@@ -60,6 +60,7 @@ export default function TokenPage() {
       phone: data.phone,
       checkInTime: new Date(),
       status: 'waiting',
+      services: [], // Initialize services array
     };
 
     setTicketCounter(prev => prev + 1);
@@ -78,7 +79,6 @@ export default function TokenPage() {
     const updatedMember: QueueMember = {
         ...currentMember,
         name: data.name,
-        service: 'Pending', // Default service, will be updated
         estimatedServiceTime: new Date(), // Placeholder, will be updated
     } as QueueMember;
 

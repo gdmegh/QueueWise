@@ -1,3 +1,5 @@
+import { SubService } from "./services";
+
 export interface QueueMember {
   id: number;
   ticketNumber: string;
@@ -6,7 +8,7 @@ export interface QueueMember {
   checkInTime: Date;
   estimatedServiceTime: Date;
   status: 'waiting' | 'in-service' | 'serviced';
-  service: string;
+  services: SubService[];
   assignedTo?: number; // Staff user ID
   serviceNotes?: string;
   feedback?: {

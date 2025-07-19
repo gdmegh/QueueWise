@@ -10,7 +10,7 @@ import { CheckInForm } from '@/components/CheckInForm';
 import { QueueDisplay } from '@/components/QueueDisplay';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { WaitTimeCard } from '@/components/WaitTimeCard';
-import type { AnalyticsData, QueueMember } from '@/lib/types';
+import type { QueueMember } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { Bell, Edit } from 'lucide-react';
 import { services } from '@/lib/services';
@@ -38,7 +38,7 @@ const createInitialQueue = (): QueueMember[] => {
             checkInTime: checkInTime,
             estimatedServiceTime: new Date(checkInTime.getTime() + (i + 1) * service.avgTime * 60000),
             status: i < 1 ? 'serviced' : 'waiting',
-            service: service.name,
+            services: [service],
             assignedTo: i < 3 ? 2 : undefined, // Assign first 3 to mock staff
         };
     });
@@ -102,7 +102,7 @@ export default function QueuePage() {
 
 
   const handleJoinQueue = (data: z.infer<typeof formSchema>) => {
-    if (queue.length >= MAX_QUEUE_SIZE) {
+    if (queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE) {
         toast({
             title: "Queue is full",
             description: "We're sorry, the queue is currently full. Please try again later.",
