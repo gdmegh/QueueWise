@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Users, LayoutDashboard, Monitor, Shield, UserCog, UserCircle } from 'lucide-react';
+import { Users, LayoutDashboard, Monitor, Shield, UserCog, UserCircle, Crown } from 'lucide-react';
 import { Button } from './ui/button';
 
 export function Header() {
@@ -43,6 +43,12 @@ export function Header() {
             <Button variant="ghost">
                 <Shield className="mr-2 h-4 w-4" />
                 Admin
+            </Button>
+          </Link>
+          <Link href="/super-admin" passHref>
+            <Button variant="ghost">
+                <Crown className="mr-2 h-4 w-4" />
+                Super Admin
             </Button>
           </Link>
         </nav>
