@@ -33,8 +33,8 @@ interface AnalyticsDashboardProps {
 const COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
 export const AnalyticsDashboard: FC<AnalyticsDashboardProps> = ({ analytics, allServiced }) => {
-  const servicePopularityData = allServiced
-    .flatMap(member => member.services.map(s => s.name))
+  const servicePopularityData = (allServiced || [])
+    .flatMap(member => (member.services || []).map(s => s.name))
     .reduce((acc, serviceName) => {
       const existing = acc.find(item => item.name === serviceName);
       if (existing) {
@@ -131,5 +131,3 @@ export const AnalyticsDashboard: FC<AnalyticsDashboardProps> = ({ analytics, all
     </Card>
   );
 };
-
-    
