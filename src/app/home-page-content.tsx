@@ -20,7 +20,7 @@ import { useLocalStorage } from '@/hooks/use-local-storage';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const checkInFormSchema = z.object({
-  phone: z.string().regex(/^\d{11}$/, { message: 'Please enter a valid 11-digit phone number.' }),
+  phone: z.string().regex(/^\d{10,15}$/, { message: 'Please enter a valid phone number.' }),
 });
 
 const loginFormSchema = z.object({
@@ -28,7 +28,7 @@ const loginFormSchema = z.object({
   password: z.string().min(1, "Password is required."),
 });
 
-const MAX_QUEUE_SIZE = 20;
+const MAX_QUEUE_SIZE = 50;
 
 export default function HomePageContent() {
   const router = useRouter();
@@ -66,7 +66,7 @@ export default function HomePageContent() {
       checkInTime: new Date(),
       status: 'waiting',
       services: [],
-      name: 'Guest User', // Default name for guests
+      name: 'Guest Patient', // Default name for guests
       estimatedServiceTime: new Date(), // Placeholder
     };
 
@@ -90,14 +90,14 @@ export default function HomePageContent() {
       <div className="w-full max-w-md space-y-8">
         <div className="text-center">
             <Ticket className="mx-auto h-12 w-12 text-primary" />
-            <h1 className="text-3xl font-bold tracking-tight text-primary mt-4">Welcome to QueueWise</h1>
-            <p className="text-muted-foreground mt-2">Your smart queueing solution.</p>
+            <h1 className="text-3xl font-bold tracking-tight text-primary mt-4">Welcome to HealthQueue</h1>
+            <p className="text-muted-foreground mt-2">Your smart clinic queueing solution.</p>
         </div>
 
         <Tabs defaultValue="guest" className="w-full">
             <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="guest">Join as Guest</TabsTrigger>
-                <TabsTrigger value="login">Registered User</TabsTrigger>
+                <TabsTrigger value="guest">New Patient Check-in</TabsTrigger>
+                <TabsTrigger value="login">Registered Patient</TabsTrigger>
             </TabsList>
             <TabsContent value="guest" className="mt-4">
                  <CheckInForm onJoinQueue={handleJoinQueueAsGuest} isQueueFull={queue.filter(q => q.status === 'waiting').length >= MAX_QUEUE_SIZE}/>
@@ -105,7 +105,7 @@ export default function HomePageContent() {
             <TabsContent value="login" className="mt-4">
                 <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
                     <CardHeader>
-                        <CardTitle className="font-headline text-primary">Login</CardTitle>
+                        <CardTitle className="font-headline text-primary">Patient Login</CardTitle>
                         <CardDescription>Access your account to see your history and get faster service.</CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -146,4 +146,3 @@ export default function HomePageContent() {
     </main>
   );
 }
-

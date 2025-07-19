@@ -1,6 +1,6 @@
 'use server';
 /**
- * @fileOverview Recommends a service based on user input.
+ * @fileOverview Recommends a service based on user input for a clinic.
  *
  * - recommendService - A function that recommends a service.
  * - ServiceRecommendationInput - The input type for the recommendService function.
@@ -11,7 +11,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { services } from '@/lib/services';
 
-const serviceNames = services.map(s => s.name) as [string, ...string[]];
+const serviceNames = services.flatMap(s => s.subServices.map(sub => sub.name)) as [string, ...string[]];
 
 const ServiceRecommendationInputSchema = z.object({
   issueDescription: z.string().describe('The user\'s description of their issue or what they need help with.'),
@@ -34,13 +34,15 @@ const prompt = ai.definePrompt({
   name: 'serviceRecommendationPrompt',
   input: {schema: ServiceRecommendationInputSchema},
   output: {schema: ServiceRecommendationOutputSchema},
-  prompt: `You are an expert at understanding customer needs at a financial institution. Based on the user's issue description, recommend the most appropriate service.
+  prompt: `You are an expert at understanding patient needs at a medical clinic. Based on the user's issue description, recommend the most appropriate service.
 
 Available services:
-- General Inquiry: For general questions, account information, etc.
-- New Account: For opening a new bank account.
-- Deposit/Withdrawal: For simple cash or check transactions.
-- Loan Application: For inquiries and applications related to personal or business loans.
+- General Physician: For general check-ups, cough, flu, etc.
+- Specialist Consultation: For specific issues requiring a specialist like a cardiologist or dermatologist.
+- Blood Test: For lab work involving blood samples.
+- X-Ray: For medical imaging.
+- Prescription Pickup: For collecting pre-approved medication.
+- Vaccination: For getting immunizations.
 
 User's issue: "{{{issueDescription}}}"
 

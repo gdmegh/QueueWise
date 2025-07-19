@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 const formSchema = z.object({
-  phone: z.string().regex(/^\d{11}$/, { message: 'Please enter a valid 11-digit phone number.' }),
+  phone: z.string().regex(/^\d{10,15}$/, { message: 'Please enter a valid phone number.' }),
 });
 
 interface CheckInFormProps {
@@ -80,4 +80,3 @@ export function CheckInForm({ onJoinQueue, isQueueFull }: CheckInFormProps) {
     </Card>
   );
 }
-

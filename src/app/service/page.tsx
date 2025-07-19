@@ -10,20 +10,26 @@ import { services as serviceCategories, SubService, ServiceCategory } from '@/li
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, ArrowRight, Trash2, Banknote, List, ArrowLeft, Building, HandCoins } from 'lucide-react';
+import { Loader2, ArrowRight, Trash2, Pill, List, ArrowLeft, Stethoscope, HeartPulse, FlaskConical } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
 const serviceIcons: { [key: string]: React.ReactNode } = {
-  'Personal Banking': <Building className="h-8 w-8" />,
-  'Loans & Mortgages': <HandCoins className="h-8 w-8" />,
-  'Transactions': <Banknote className="h-8 w-8" />,
-  'General Inquiry': <List className="h-8 w-8" />,
+  'Consultation': <Stethoscope className="h-8 w-8" />,
+  'Diagnostics': <FlaskConical className="h-8 w-8" />,
+  'Pharmacy': <Pill className="h-8 w-8" />,
+  'General Check-up': <HeartPulse className="h-8 w-8" />,
 };
 
 const subServiceIcons: { [key: string]: React.ReactNode } = {
-  'Account Services': <Banknote className="h-4 w-4" />,
-  'Card Services': <Banknote className="h-4 w-4" />,
-  'General Inquiry': <List className="h-4 w-4" />,
+  'General Physician': <Stethoscope className="h-4 w-4" />,
+  'Specialist Consultation': <Stethoscope className="h-4 w-4" />,
+  'Blood Test': <FlaskConical className="h-4 w-4" />,
+  'X-Ray': <FlaskConical className="h-4 w-4" />,
+  'Ultrasound': <FlaskConical className="h-4 w-4" />,
+  'Prescription Pickup': <Pill className="h-4 w-4" />,
+  'Over-the-counter': <Pill className="h-4 w-4" />,
+  'Annual Physical': <HeartPulse className="h-4 w-4" />,
+  'Vaccination': <HeartPulse className="h-4 w-4" />,
 };
 
 
@@ -49,7 +55,7 @@ export default function ServicePage() {
         setCurrentMember(member);
         setSelectedServices(member.services || []);
       } else {
-        toast({ title: "Invalid Ticket", description: "Could not find a user with that ticket number.", variant: 'destructive' });
+        toast({ title: "Invalid Ticket", description: "Could not find a patient with that ticket number.", variant: 'destructive' });
         router.push('/');
       }
     } else {
@@ -94,7 +100,7 @@ export default function ServicePage() {
     resetSelection();
     toast({
         title: "Service Added",
-        description: `"${service.name}" has been added to your list.`,
+        description: `"${service.name}" has been added to your request.`,
     });
   };
 
@@ -146,7 +152,7 @@ export default function ServicePage() {
         description: `You are now in the queue.`,
       });
 
-      router.push('/live-queue');
+      router.push('/queue');
   }
 
   const renderSelectionUI = () => {
@@ -283,4 +289,3 @@ export default function ServicePage() {
     </main>
   );
 }
-

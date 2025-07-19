@@ -1,6 +1,6 @@
 
 import type { FC } from 'react';
-import { Bell, Users, List, Banknote, UserPlus, HandCoins, Edit, CheckCircle } from 'lucide-react';
+import { Bell, Users, List, Edit, CheckCircle, Stethoscope, FlaskConical, Pill, HeartPulse } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { QueueMember } from '@/lib/types';
@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { services } from '@/lib/services';
 import { Button } from '../ui/button';
 import { FeedbackForm } from '../forms/FeedbackForm';
+
 
 interface QueueDisplayProps {
   queue: QueueMember[];
@@ -17,15 +18,12 @@ interface QueueDisplayProps {
 
 const serviceDetails: { [key: string]: { icon: React.ReactNode; counter: string } } = services.flatMap(cat => cat.subServices).reduce((acc, service) => {
     const icons: { [key: string]: React.ReactNode } = {
-        'General Inquiry': <List className="h-4 w-4" />,
-        'Account Services': <UserPlus className="h-4 w-4" />,
-        'Card Services': <Banknote className="h-4 w-4" />,
-        'Personal Loan': <HandCoins className="h-4 w-4" />,
-        'Mortgage Application': <HandCoins className="h-4 w-4" />,
-        'Loan Payment': <HandCoins className="h-4 w-4" />,
-        'Deposit': <Banknote className="h-4 w-4" />,
-        'Withdrawal': <Banknote className="h-4 w-4" />,
-        'Wire Transfer': <Banknote className="h-4 w-4" />,
+        'General Physician': <Stethoscope className="h-4 w-4" />,
+        'Specialist Consultation': <Stethoscope className="h-4 w-4" />,
+        'Blood Test': <FlaskConical className="h-4 w-4" />,
+        'X-Ray': <FlaskConical className="h-4 w-4" />,
+        'Prescription Pickup': <Pill className="h-4 w-4" />,
+        'Vaccination': <HeartPulse className="h-4 w-4" />,
         'Pending': <List className="h-4 w-4" />,
     };
 
@@ -80,7 +78,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
   return (
      <Card className="h-full bg-card/50">
         <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-headline text-primary"><Users /> Live Queue</CardTitle>
+            <CardTitle className="flex items-center gap-2 font-headline text-primary"><Users /> Live Patient Queue</CardTitle>
             <CardDescription>Current waiting list and estimated service times.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -91,7 +89,7 @@ export const QueueDisplay: FC<QueueDisplayProps> = ({ queue, onEditService, onSe
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[100px]">Ticket</TableHead>
-                                <TableHead>Name</TableHead>
+                                <TableHead>Patient Name</TableHead>
                                 <TableHead>Services</TableHead>
                                 <TableHead className="text-right">Action</TableHead>
                             </TableRow>

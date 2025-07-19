@@ -14,75 +14,73 @@ export interface ServiceCategory {
 
 export const services: ServiceCategory[] = [
     {
-        name: 'Personal Banking',
+        name: 'Consultation',
         subServices: [
             {
-                name: 'Account Services',
-                avgTime: 10,
-                counter: 'Counter 2',
-                subServices: [
-                    { name: 'Open New Account', avgTime: 15, counter: 'Counter 2' },
-                    { name: 'Close Account', avgTime: 10, counter: 'Counter 2' },
-                    { name: 'Account Maintenance', avgTime: 5, counter: 'Counter 1' },
-                ]
-            },
-            {
-                name: 'Card Services',
-                avgTime: 8,
-                counter: 'Counter 1',
-                subServices: [
-                    { name: 'Report Lost/Stolen Card', avgTime: 5, counter: 'Counter 1' },
-                    { name: 'New Debit Card', avgTime: 7, counter: 'Counter 1' },
-                    { name: 'Credit Card Inquiry', avgTime: 10, counter: 'Counter 4' },
-                ]
-            },
-            {
-                name: 'General Inquiry',
-                avgTime: 5,
-                counter: 'Counter 1',
+                name: 'General Physician',
+                avgTime: 15,
+                counter: 'Room 1',
                 needsDescription: true,
             },
-        ]
-    },
-    {
-        name: 'Loans & Mortgages',
-        subServices: [
             {
-                name: 'Personal Loan',
-                avgTime: 20,
-                counter: 'Counter 4',
-                needsDescription: true
-            },
-            {
-                name: 'Mortgage Application',
-                avgTime: 30,
-                counter: 'Counter 4',
-                needsDescription: true
-            },
-            {
-                name: 'Loan Payment',
-                avgTime: 5,
-                counter: 'Counter 3'
+                name: 'Specialist Consultation',
+                avgTime: 25,
+                counter: 'Room 2',
+                subServices: [
+                    { name: 'Cardiology', avgTime: 25, counter: 'Room 2' },
+                    { name: 'Dermatology', avgTime: 20, counter: 'Room 3' },
+                    { name: 'Pediatrics', avgTime: 15, counter: 'Room 4' },
+                ]
             }
         ]
     },
     {
-        name: 'Transactions',
+        name: 'Diagnostics',
         subServices: [
             {
-                name: 'Deposit',
-                avgTime: 3,
-                counter: 'Counter 3'
+                name: 'Blood Test',
+                avgTime: 10,
+                counter: 'Lab'
             },
             {
-                name: 'Withdrawal',
-                avgTime: 3,
-                counter: 'Counter 3'
+                name: 'X-Ray',
+                avgTime: 15,
+                counter: 'Imaging'
             },
             {
-                name: 'Wire Transfer',
-                avgTime: 12,
-                counter: 'Counter 3'
+                name: 'Ultrasound',
+                avgTime: 20,
+                counter: 'Imaging'
+            }
+        ]
+    },
+    {
+        name: 'Pharmacy',
+        subServices: [
+            {
+                name: 'Prescription Pickup',
+                avgTime: 5,
+                counter: 'Pharmacy Counter'
+            },
+            {
+                name: 'Over-the-counter',
+                avgTime: 3,
+                counter: 'Pharmacy Counter'
+            }
+        ]
+    },
+    {
+        name: 'General Check-up',
+        subServices: [
+            {
+                name: 'Annual Physical',
+                avgTime: 30,
+                counter: 'Room 1'
+            },
+            {
+                name: 'Vaccination',
+                avgTime: 10,
+                counter: 'Room 5'
             }
         ]
     },
@@ -90,9 +88,8 @@ export const services: ServiceCategory[] = [
 
 // Flat list for old parts of the app that might need it
 export const flatServices: { name: string; avgTime: number; counter: string; }[] = [
-    { name: 'General Inquiry', avgTime: 5, counter: 'Counter 1' },
-    { name: 'New Account', avgTime: 15, counter: 'Counter 2' },
-    { name: 'Deposit/Withdrawal', avgTime: 3, counter: 'Counter 3' },
-    { name: 'Loan Application', avgTime: 20, counter: 'Counter 4' },
+    { name: 'General Physician', avgTime: 15, counter: 'Room 1' },
+    { name: 'Blood Test', avgTime: 10, counter: 'Lab' },
+    { name: 'Prescription Pickup', avgTime: 5, counter: 'Pharmacy Counter' },
+    { name: 'Vaccination', avgTime: 10, counter: 'Room 5' },
 ]
-

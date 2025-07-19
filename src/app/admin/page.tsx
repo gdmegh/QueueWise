@@ -40,9 +40,9 @@ const companySettingsSchema = z.object({
 export default function AdminPage() {
   const [users, setUsers] = useLocalStorage<User[]>('users', [
     MOCK_CURRENT_USER,
-    { id: 2, name: 'John Staff', role: 'staff' },
-    { id: 3, name: 'Jane Supervisor', role: 'supervisor' },
-    { id: 4, name: 'Emily Staff', role: 'staff' },
+    { id: 2, name: 'Dr. John Smith', role: 'staff' },
+    { id: 3, name: 'Nurse Jane', role: 'supervisor' },
+    { id: 4, name: 'Emily Clerk', role: 'staff' },
   ]);
   const [shifts, setShifts] = useLocalStorage<Shift[]>('shifts', [
     { id: 1, userId: 2, start: new Date('2024-08-01T09:00:00'), end: new Date('2024-08-01T17:00:00')},
@@ -56,9 +56,9 @@ export default function AdminPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
   const [companySettings, setCompanySettings] = useLocalStorage<CompanySettings>('companySettings', {
-    name: 'QueueWise',
+    name: 'HealthQueue',
     logoUrl: '/assets/logo.svg', // Standardized path
-    primaryColor: '45 85% 60%',
+    primaryColor: '180 85% 40%',
   });
 
   const staffForm = useForm<z.infer<typeof staffFormSchema>>({
