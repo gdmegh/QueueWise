@@ -1,6 +1,13 @@
 import { SubService as ImportedSubService } from "./services";
 
-export type SubService = ImportedSubService;
+// Renaming for clarity in this file
+type ServiceTemplate = ImportedSubService;
+
+export interface Service extends ServiceTemplate {
+  status: 'pending' | 'in-progress' | 'completed';
+  startTime?: Date;
+  endTime?: Date;
+}
 
 export interface QueueMember {
   id: number;
@@ -8,9 +15,8 @@ export interface QueueMember {
   name: string;
   phone: string;
   checkInTime: Date;
-  estimatedServiceTime: Date;
   status: 'waiting' | 'in-service' | 'serviced';
-  services: SubService[];
+  services: Service[]; // This now uses the extended Service type
   assignedTo?: number; // Staff user ID
   serviceNotes?: string;
   feedback?: {

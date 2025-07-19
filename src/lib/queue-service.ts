@@ -2,7 +2,7 @@
 // In a real production application, this would be replaced with a proper
 // database like Firestore, and these functions would become API calls.
 
-import { QueueMember, SubService } from "./types";
+import { QueueMember, Service } from "./types";
 import { services } from "./services";
 
 const getLocalStorage = <T>(key: string, defaultValue: T): T => {
@@ -26,39 +26,45 @@ export const createInitialQueue = (): QueueMember[] => {
     const now = new Date();
     const queue: QueueMember[] = [];
     
-    // Distribute services to create a predictable queue for each counter
-    const counterServices: { [key: string]: SubService[] } = {
-        'Room 1': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 1'),
-        'Room 2': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 2'),
-        'Room 3': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 3'),
-        'Room 4': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 4'),
-        'Lab': services.flatMap(s => s.subServices).filter(s => s.counter === 'Lab'),
-        'Imaging': services.flatMap(s => s.subServices).filter(s => s.counter === 'Imaging'),
-        'Pharmacy Counter': services.flatMap(s => s.subServices).filter(s => s.counter === 'Pharmacy Counter'),
-        'Room 5': services.flatMap(s => s.subServices).filter(s => s.counter === 'Room 5'),
-    };
-    
-    const allCounters = ['Room 1', 'Room 2', 'Room 3', 'Room 4', 'Room 5', 'Lab', 'Imaging', 'Pharmacy Counter'];
+    const allServices = services.flatMap(cat => 
+        cat.subServices.flatMap(sub => 
+            sub.subServices ? sub.subServices : sub
+        )
+    );
 
-
-    for (let i = 0; i < 50; i++) {
-        const checkInTime = new Date(now.getTime() - (50 - i) * 2 * 60000);
+    for (let i = 0; i < 20; i++) {
+        const checkInTime = new Date(now.getTime() - (20 - i) * 3 * 60000); // 3 mins per person stagger
         
-        // Assign customers to counters in a round-robin fashion for a distributed queue
-        const counterName = allCounters[i % allCounters.length];
-        const servicePool = counterServices[counterName as keyof typeof counterServices] || [];
-        const assignedService = servicePool.length > 0 ? servicePool[Math.floor(Math.random() * servicePool.length)] : services[0].subServices[0];
+        // Give 1 or 2 services to each person
+        const serviceCount = Math.random() > 0.6 ? 2 : 1;
+        const assignedServices: Service[] = [];
+        const usedIndexes = new Set<number>();
 
+        for (let j = 0; j < serviceCount; j++) {
+            let serviceIndex;
+            do {
+                serviceIndex = Math.floor(Math.random() * allServices.length);
+            } while (usedIndexes.has(serviceIndex));
+            usedIndexes.add(serviceIndex);
+
+            const serviceTemplate = allServices[serviceIndex];
+            assignedServices.push({
+                ...serviceTemplate,
+                status: 'pending', // All services start as pending
+                startTime: undefined,
+                endTime: undefined,
+            });
+        }
+        
+        // Overall status is 'waiting' until first service starts
         queue.push({
             id: Date.now() + i,
-            ticketNumber: `A-${String(i + 1).padStart(3, '0')}`,
-            name: `Patient ${i + 1}`,
+            ticketNumber: `A-${String(i + 101).padStart(3, '0')}`,
+            name: `Patient ${i + 101}`,
             phone: `012345678${String(10 + i).padStart(2, '0')}`,
             checkInTime: checkInTime,
-            // Estimate service time based on check-in + avg time. Actual start time will be later.
-            estimatedServiceTime: new Date(checkInTime.getTime() + assignedService.avgTime * 60000),
             status: 'waiting',
-            services: [assignedService],
+            services: assignedServices,
         });
     }
     setLocalStorage('queue', queue);
@@ -103,68 +109,73 @@ export const addAllToServiced = (members: QueueMember[]): void => {
 
 /**
  * Runs a simulation step to update the queue state.
- * - Moves completed customers from 'in-service' to the 'serviced' list.
- * - Fills empty counters with the next appropriate 'waiting' customer.
  */
 export const runQueueSimulation = (): { updatedQueue: QueueMember[], newlyServiced: QueueMember[] } => {
     let queue = getQueue();
     const now = new Date();
     let newlyServiced: QueueMember[] = [];
 
-    // 1. Check if any 'in-service' customers are done
-    const remainingQueue = queue.filter(member => {
-        if (member.status === 'in-service' && new Date(member.estimatedServiceTime) <= now) {
-            newlyServiced.push({ ...member, status: 'serviced' });
-            return false; // Remove from active queue
+    // 1. Mark completed services and update member status
+    queue.forEach(member => {
+        if (member.status === 'in-service') {
+            let allServicesDone = true;
+            member.services.forEach(service => {
+                if (service.status === 'in-progress' && service.endTime && new Date(service.endTime) <= now) {
+                    service.status = 'completed';
+                }
+                if (service.status !== 'completed') {
+                    allServicesDone = false;
+                }
+            });
+
+            if (allServicesDone) {
+                member.status = 'serviced';
+            } else {
+                 // Check if there are no more 'in-progress' services, but some are still pending.
+                 const hasInProgress = member.services.some(s => s.status === 'in-progress');
+                 if (!hasInProgress) {
+                     member.status = 'waiting'; // Waiting for the next service
+                 }
+            }
+        }
+    });
+
+    const activeQueue = queue.filter(member => {
+        if (member.status === 'serviced') {
+            newlyServiced.push(member);
+            return false;
         }
         return true;
     });
 
-    let updatedQueue = remainingQueue;
-    
-    // 2. Fill empty counters
-    const servingCounters = updatedQueue
-        .filter(m => m.status === 'in-service')
-        .flatMap(m => m.services.map(s => s.counter).filter(Boolean) as string[]);
-    
-    const availableCounters = Array.from({length: 6}, (_, i) => `Room ${i+1}`)
-        .filter(c => !servingCounters.includes(c));
+    // 2. Assign new services to available counters
+    const servingCounters = new Set(
+        activeQueue.flatMap(m => m.services)
+            .filter(s => s.status === 'in-progress')
+            .map(s => s.counter)
+    );
 
-    if (availableCounters.length > 0) {
-        const waitingQueue = updatedQueue
-            .filter(m => m.status === 'waiting')
-            .sort((a,b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
-        
-        const assignedMemberIds = new Set<number>();
-
-        availableCounters.forEach(counterName => {
-            const nextInLine = waitingQueue.find(member => 
-                !assignedMemberIds.has(member.id) &&
-                member.services.some(s => s.counter === counterName)
-            );
+    const waitingMembers = activeQueue
+        .filter(m => m.status === 'waiting')
+        .sort((a,b) => new Date(a.checkInTime).getTime() - new Date(b.checkInTime).getTime());
+    
+    for (const member of waitingMembers) {
+        const nextService = member.services.find(s => s.status === 'pending');
+        if (nextService && !servingCounters.has(nextService.counter)) {
+            // Assign this service
+            nextService.status = 'in-progress';
+            nextService.startTime = new Date();
+            nextService.endTime = new Date(Date.now() + nextService.avgTime * 60000);
             
-            if (nextInLine) {
-                assignedMemberIds.add(nextInLine.id);
-                updatedQueue = updatedQueue.map(member => 
-                    member.id === nextInLine.id 
-                    ? { 
-                        ...member, 
-                        status: 'in-service',
-                        // Assign actual counter and calculate estimated finish time
-                        services: member.services.map(s => ({...s, counter: counterName})),
-                        estimatedServiceTime: new Date(Date.now() + member.services.reduce((acc, s) => acc + s.avgTime, 0) * 60000)
-                      } 
-                    : member
-                );
-            }
-        });
+            member.status = 'in-service';
+            servingCounters.add(nextService.counter);
+        }
     }
     
-    // Persist changes
-    updateQueue(updatedQueue);
+    updateQueue(activeQueue);
     if (newlyServiced.length > 0) {
         addAllToServiced(newlyServiced);
     }
     
-    return { updatedQueue, newlyServiced };
+    return { updatedQueue: activeQueue, newlyServiced };
 }

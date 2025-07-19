@@ -11,7 +11,7 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import { services } from '@/lib/services';
 
-const serviceNames = services.flatMap(s => s.subServices.map(sub => sub.name)) as [string, ...string[]];
+const serviceNames = services.flatMap(s => s.subServices.flatMap(sub => sub.subServices ? sub.subServices.map(ss => ss.name) : sub.name)) as [string, ...string[]];
 
 const ServiceRecommendationInputSchema = z.object({
   issueDescription: z.string().describe('The user\'s description of their issue or what they need help with.'),
@@ -38,15 +38,15 @@ const prompt = ai.definePrompt({
 
 Available services:
 - General Physician: For general check-ups, cough, flu, etc.
-- Specialist Consultation: For specific issues requiring a specialist like a cardiologist or dermatologist.
+- Specialist Consultation (Cardiology, Dermatology, Pediatrics): For specific issues requiring a specialist.
 - Blood Test: For lab work involving blood samples.
-- X-Ray: For medical imaging.
-- Prescription Pickup: For collecting pre-approved medication.
-- Vaccination: For getting immunizations.
+- X-Ray / Ultrasound: For medical imaging.
+- Prescription Pickup / Over-the-counter: For collecting medication.
+- Annual Physical / Vaccination: For preventative care and immunizations.
 
 User's issue: "{{{issueDescription}}}"
 
-Recommend a service from the available list and provide a short reason for your recommendation.
+Recommend a specific service from the available list and provide a short reason for your recommendation.
 `,
 });
 
