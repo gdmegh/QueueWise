@@ -31,6 +31,12 @@ export function Header() {
             </h1>
         </Link>
         <nav className="flex items-center gap-2">
+           <Link href="/live-queue" passHref>
+            <Button variant="ghost">
+                <Users className="mr-2 h-4 w-4" />
+                Live Queue
+            </Button>
+          </Link>
            <Link href="/display" passHref>
             <Button variant="ghost">
                 <Monitor className="mr-2 h-4 w-4" />
