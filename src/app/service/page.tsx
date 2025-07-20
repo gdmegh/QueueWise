@@ -136,7 +136,7 @@ export default function ServicePage() {
         description: `You are now in the queue.`,
       });
 
-      router.push('/queue');
+      router.push(`/status?ticketNumber=${currentMember.ticketNumber}`);
   }
 
   const renderSelectionUI = () => {
@@ -263,7 +263,7 @@ export default function ServicePage() {
                 {selectedServices.length > 0 && (
                     <CardFooter>
                         <Button onClick={onConfirmServices} className="w-full">
-                            Confirm & Join Queue <ArrowRight className="ml-2"/>
+                            Confirm & Check Status <ArrowRight className="ml-2"/>
                         </Button>
                     </CardFooter>
                 )}
