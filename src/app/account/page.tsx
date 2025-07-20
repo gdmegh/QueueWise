@@ -7,11 +7,14 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { UserCircle, Ticket, CheckCircle } from 'lucide-react';
+import { UserCircle, Ticket, CheckCircle, Edit, Feather, HeartPulse } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import * as db from '@/lib/database';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { FeedbackForm } from '@/components/forms/FeedbackForm';
+import { Textarea } from '@/components/ui/textarea';
 
 // Mock logged-in user data - in a real app this would come from an auth context
 const MOCK_REGISTERED_USER = {
@@ -27,12 +30,18 @@ export default function AccountPage() {
     const { toast } = useToast();
     const [userHistory, setUserHistory] = useState<QueueMember[]>([]);
     const [queue, setQueue] = useState<QueueMember[]>([]);
+    const [isFeedbackModalOpen, setFeedbackModalOpen] = useState(false);
+    const [selectedMemberForFeedback, setSelectedMemberForFeedback] = useState<QueueMember | null>(null);
 
-    useEffect(() => {
+    const refreshData = () => {
         const serviced = db.getData<QueueMember[]>('serviced');
         const currentQueue = db.getData<QueueMember[]>('queue');
-        setUserHistory(serviced.filter(item => item.phone === MOCK_REGISTERED_USER.phone));
+        setUserHistory(serviced.filter(item => item.phone === MOCK_REGISTERED_USER.phone).sort((a,b) => new Date(b.checkInTime).getTime() - new Date(a.checkInTime).getTime()));
         setQueue(currentQueue);
+    }
+    
+    useEffect(() => {
+        refreshData();
     }, []);
 
     const handleNewCheckin = () => {
@@ -71,10 +80,36 @@ export default function AccountPage() {
         router.push(`/service?ticketNumber=${newMember.ticketNumber}`);
     }
 
+    const handleOpenFeedback = (member: QueueMember) => {
+        setSelectedMemberForFeedback(member);
+        setFeedbackModalOpen(true);
+    };
+
+    const handleFeedbackSubmit = (memberId: number, feedback: any) => {
+        db.updateMemberFeedback(memberId, feedback);
+        refreshData();
+        setFeedbackModalOpen(false);
+        toast({ title: "Thank you!", description: "Your feedback has been submitted successfully." });
+    };
+
+    const handleHealthInfoSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+        const healthInfo = formData.get('healthInfo');
+        
+        // In a real app, you would save this to the user's profile in the database.
+        console.log("Health info submitted:", healthInfo);
+
+        toast({
+            title: "Health Profile Updated",
+            description: "Thank you for providing your information. We will use this to provide better recommendations.",
+        });
+    }
+
     return (
         <main className="flex-grow container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                <div className="md:col-span-1">
+                <div className="md:col-span-1 space-y-8">
                     <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
                         <CardHeader className="items-center text-center">
                             <UserCircle className="h-16 w-16 text-primary" />
@@ -87,12 +122,28 @@ export default function AccountPage() {
                             </Button>
                         </CardContent>
                     </Card>
+                    <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2"><HeartPulse/> My Health Profile</CardTitle>
+                            <CardDescription>Provide information for better service recommendations.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <form onSubmit={handleHealthInfoSubmit} className="space-y-4">
+                                <Textarea 
+                                    name="healthInfo"
+                                    placeholder="e.g., I have a history of high blood pressure, I am allergic to penicillin, I visit for regular check-ups..." 
+                                    rows={5}
+                                />
+                                <Button type="submit" className="w-full">Save Information</Button>
+                            </form>
+                        </CardContent>
+                    </Card>
                 </div>
                 <div className="md:col-span-2">
                     <Card className="bg-card/50 border-primary/20 shadow-lg backdrop-blur-sm">
                         <CardHeader>
                             <CardTitle>Visit History</CardTitle>
-                            <CardDescription>Review your past services and feedback.</CardDescription>
+                            <CardDescription>Review your past services and provide feedback.</CardDescription>
                         </CardHeader>
                         <CardContent>
                             <Table>
@@ -116,7 +167,9 @@ export default function AccountPage() {
                                                         <CheckCircle className="h-4 w-4"/> {item.feedback.rating}
                                                     </div>
                                                 ) : (
-                                                     <span className="text-muted-foreground">Not provided</span>
+                                                    <Button variant="outline" size="sm" onClick={() => handleOpenFeedback(item)}>
+                                                        <Feather className="mr-2 h-3 w-3" /> Provide
+                                                    </Button>
                                                 )}
                                             </TableCell>
                                         </TableRow>
@@ -133,6 +186,17 @@ export default function AccountPage() {
                     </Card>
                 </div>
             </div>
+
+            <Dialog open={isFeedbackModalOpen} onOpenChange={setFeedbackModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Provide Feedback for ticket {selectedMemberForFeedback?.ticketNumber}</DialogTitle>
+                    </DialogHeader>
+                    {selectedMemberForFeedback && (
+                        <FeedbackForm member={selectedMemberForFeedback} onSubmitFeedback={handleFeedbackSubmit} />
+                    )}
+                </DialogContent>
+            </Dialog>
         </main>
     )
 }
