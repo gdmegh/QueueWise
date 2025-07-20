@@ -9,6 +9,8 @@ import { Users, Clock, UserCheck, Stethoscope, FlaskConical, Pill, HeartPulse, C
 import * as QueueService from '@/lib/queue-service';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { services as serviceCategories } from '@/lib/services';
+import { getCompanySettings } from '@/lib/database';
+import { CompanySettings } from '@/lib/types';
 
 const REFRESH_INTERVAL_MS = 5000;
 
@@ -69,6 +71,7 @@ const getAllCounters = () => {
 export default function DisplayPage() {
     const [queue, setQueue] = useState<QueueMember[]>([]);
     const [servicedCount, setServicedCount] = useState(0);
+    const [companySettings, setCompanySettings] = useState<CompanySettings>({ name: '', logoUrl: '', primaryColor: '' });
 
     const refreshData = useCallback(() => {
         setQueue(QueueService.getQueue());
@@ -76,6 +79,7 @@ export default function DisplayPage() {
     }, []);
 
     useEffect(() => {
+        setCompanySettings(getCompanySettings());
         refreshData();
         const intervalId = setInterval(() => {
             QueueService.runQueueSimulation();
@@ -112,12 +116,6 @@ export default function DisplayPage() {
 
     return (
         <main className="flex flex-col h-screen bg-background text-foreground p-8">
-            <header className="text-center mb-6">
-                <h1 className="text-6xl font-bold text-primary tracking-tight">
-                    GD Clinic Status
-                </h1>
-            </header>
-
             <div className="flex-grow grid grid-cols-12 gap-8">
                 {/* Left Section: Wait Time & Now Serving */}
                 <div className="col-span-12 lg:col-span-4 flex flex-col gap-8">

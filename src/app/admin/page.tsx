@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlusCircle, Edit, Trash2, UserPlus, CalendarDays, Loader2, Shield, BarChart, Bell, Check, X, Settings, Image as ImageIcon, Palette } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, UserPlus, CalendarDays, Loader2, Shield, BarChart, Bell, Check, X, Settings, Image as ImageIcon, Palette, Upload } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -32,7 +32,7 @@ const staffFormSchema = z.object({
 
 const companySettingsSchema = z.object({
   name: z.string().min(1, 'Company name is required.'),
-  logoUrl: z.string().url('Please enter a valid URL.').optional().or(z.literal('')),
+  logoUrl: z.string().optional().or(z.literal('')),
   primaryColor: z.string().regex(/^(\d{1,3})\s(\d{1,3})%\s(\d{1,3})%$/, 'Invalid HSL color format. Use: H S% L%'),
 });
 
@@ -64,7 +64,10 @@ export default function AdminPage() {
     setServiced(db.getData<QueueMember[]>('serviced'));
     const settings = db.getCompanySettings();
     setCompanySettings(settings);
-    settingsForm.reset(settings);
+    settingsForm.reset({
+      ...settings,
+      logoUrl: settings.logoUrl || '',
+    });
   };
 
   useEffect(() => {
@@ -113,6 +116,17 @@ export default function AdminPage() {
     refreshData();
     setIsFormOpen(false);
   }
+  
+  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const newLogoUrl = `/assets/${file.name}`;
+      // In a real app, you would upload the file to a server here.
+      // For this prototype, we'll just set the path.
+      settingsForm.setValue('logoUrl', newLogoUrl);
+      console.log(`Simulating upload of ${file.name}. New path: ${newLogoUrl}`);
+    }
+  };
 
   const onSettingsSubmit = (data: z.infer<typeof companySettingsSchema>) => {
     db.setCompanySettings(data);
@@ -212,7 +226,7 @@ export default function AdminPage() {
                                 <Edit className="h-4 w-4" />
                              </Button>
                              <Button variant="ghost" size="icon" onClick={() => handleDeleteUser(user.id)} disabled={!hasPermission('manageStaff') || user.id === MOCK_CURRENT_USER.id}>
-                                <Trash2 className="h-4 w-4 text-destructive" />
+                                <Trash2 className="h-4 w-4 text-red-500 hover:text-red-400" />
                              </Button>
                           </TableCell>
                         </TableRow>
@@ -328,28 +342,27 @@ export default function AdminPage() {
                           </FormItem>
                           )}
                       />
-                      <FormField
-                          control={settingsForm.control}
-                          name="logoUrl"
-                          render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>Logo URL</FormLabel>
-                              <div className="flex items-center gap-4">
-                                <FormControl>
-                                    <Input placeholder="https://example.com/logo.png" {...field} />
-                                </FormControl>
-                                {field.value ? (
-                                    <Image data-ai-hint="logo" src={field.value} alt="Company Logo" width={40} height={40} className="rounded-md bg-muted object-contain"/>
-                                ) : (
-                                    <div className="w-10 h-10 flex items-center justify-center rounded-md bg-muted text-muted-foreground">
-                                        <ImageIcon/>
-                                    </div>
-                                )}
-                              </div>
-                              <FormMessage />
-                          </FormItem>
-                          )}
-                      />
+                      <FormItem>
+                          <FormLabel>Company Logo</FormLabel>
+                          <div className="flex items-center gap-4">
+                              <FormControl>
+                                  <Input id="logo-upload" type="file" className="sr-only" onChange={handleLogoUpload} accept="image/png, image/jpeg, image/svg+xml"/>
+                              </FormControl>
+                              <label htmlFor="logo-upload" className="flex-grow">
+                                <Button type="button" asChild>
+                                  <span><Upload className="mr-2"/> Upload Logo</span>
+                                </Button>
+                              </label>
+                              {settingsForm.watch('logoUrl') ? (
+                                  <Image data-ai-hint="logo" src={settingsForm.watch('logoUrl') as string} alt="Company Logo" width={40} height={40} className="rounded-md bg-muted object-contain" onError={(e) => { e.currentTarget.src = 'https://placehold.co/40x40.png' }}/>
+                              ) : (
+                                  <div className="w-10 h-10 flex items-center justify-center rounded-md bg-muted text-muted-foreground">
+                                      <ImageIcon/>
+                                  </div>
+                              )}
+                          </div>
+                          <FormMessage />
+                      </FormItem>
                       <FormField
                           control={settingsForm.control}
                           name="primaryColor"
@@ -374,7 +387,6 @@ export default function AdminPage() {
                 </CardContent>
               </Card>
             </TabsContent>
-
 
           </Tabs>
         </CardContent>
