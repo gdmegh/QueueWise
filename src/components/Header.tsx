@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Users, LayoutDashboard, Monitor, Shield, UserCog, UserCircle, Crown } from 'lucide-react';
+import { LayoutDashboard, Monitor, Shield, UserCog, UserCircle, Crown } from 'lucide-react';
 import { Button } from './ui/button';
 import { CompanySettings } from '@/lib/types';
 import Image from 'next/image';
@@ -23,7 +23,7 @@ export function Header() {
             <div className="p-2 bg-primary rounded-lg flex items-center justify-center">
               {companySettings.logoUrl ? 
                 <Image data-ai-hint="logo" src={companySettings.logoUrl} alt={`${companySettings.name} Logo`} width={24} height={24} className="object-contain" /> :
-                <Users className="h-6 w-6 text-primary-foreground" />
+                <UserCircle className="h-6 w-6 text-primary-foreground" />
               }
             </div>
             <h1 className="text-2xl font-bold text-primary tracking-tight font-headline">
@@ -31,12 +31,6 @@ export function Header() {
             </h1>
         </Link>
         <nav className="flex items-center gap-2">
-           <Link href="/queue" passHref>
-            <Button variant="ghost">
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                Queue
-            </Button>
-          </Link>
            <Link href="/display" passHref>
             <Button variant="ghost">
                 <Monitor className="mr-2 h-4 w-4" />
